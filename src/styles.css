@@ -44,6 +44,25 @@ textarea {
   border-radius: 8px;
 }
 
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px auto 0;
+  max-width: 1120px;
+}
+
+.tabs button {
+  background: #ffffff;
+  border: 1px solid #b8c0b1;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.tabs button:disabled {
+  color: #8b949b;
+}
+
 .upload input {
   display: block;
   margin-top: 8px;
