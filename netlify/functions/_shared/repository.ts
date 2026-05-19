@@ -17,52 +17,10 @@ export function createSupabaseRepository() {
 
   return {
     async confirmImport(draft: ParsedScheduleDraft) {
-      const { data: importRow, error: importError } = await supabase
-        .from("schedule_imports")
-        .insert({
-          source_file_name: draft.sourceFileName,
-          date_range_start: draft.dateRangeStart,
-          date_range_end: draft.dateRangeEnd,
-          status: "confirmed"
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc("confirm_schedule_import", { draft });
 
-      if (importError) throw importError;
-
-      for (const shift of draft.shifts.filter((item) => !item.ignored)) {
-        const { data: employee, error: employeeError } = await supabase
-          .from("employees")
-          .upsert({ display_name: shift.employeeName }, { onConflict: "display_name" })
-          .select()
-          .single();
-
-        if (employeeError) throw employeeError;
-
-        const { data: department, error: departmentError } = await supabase
-          .from("departments")
-          .upsert({ name: shift.departmentLabel }, { onConflict: "name" })
-          .select()
-          .single();
-
-        if (departmentError) throw departmentError;
-
-        const { error: shiftError } = await supabase.from("shifts").insert({
-          schedule_import_id: importRow.id,
-          employee_id: employee.id,
-          shift_date: shift.shiftDate,
-          start_time: shift.startTime,
-          end_time: shift.endTime,
-          department_label: shift.departmentLabel,
-          normalized_department_id: department.id,
-          source_confidence: shift.sourceConfidence,
-          source_notes: shift.sourceNotes
-        });
-
-        if (shiftError) throw shiftError;
-      }
-
-      return importRow;
+      if (error) throw error;
+      return { id: data };
     },
 
     async savePositionList(departmentId: string, name: string, positions: PositionDefinition[]) {
