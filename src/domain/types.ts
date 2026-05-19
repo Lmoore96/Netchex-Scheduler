@@ -1,0 +1,89 @@
+export type ImportStatus = "draft" | "confirmed" | "failed";
+
+export interface ScheduleImport {
+  id: string;
+  sourceFileName: string;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  importedAt: string;
+  status: ImportStatus;
+  rawFilePath?: string;
+}
+
+export interface Employee {
+  id: string;
+  displayName: string;
+  initials?: string;
+}
+
+export interface Shift {
+  id: string;
+  scheduleImportId: string;
+  employeeId: string;
+  employeeName: string;
+  shiftDate: string;
+  startTime: string;
+  endTime: string;
+  departmentLabel: string;
+  normalizedDepartmentId?: string;
+  sourceConfidence: "high" | "medium" | "low";
+  sourceNotes?: string;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  displayColor?: string;
+  aliases: string[];
+}
+
+export interface PositionDefinition {
+  key: string;
+  label: string;
+  sortOrder: number;
+  capacityMode: "single" | "multiple";
+}
+
+export interface PositionList {
+  id: string;
+  departmentId: string;
+  name: string;
+  positions: PositionDefinition[];
+}
+
+export interface DailyPositionPlan {
+  id: string;
+  departmentId: string;
+  planDate: string;
+  positionListId: string;
+  positionsSnapshot: PositionDefinition[];
+}
+
+export interface Assignment {
+  id: string;
+  dailyPositionPlanId: string;
+  shiftId: string;
+  positionKey: string;
+  sortOrder: number;
+  notes?: string;
+}
+
+export interface ParsedShiftDraft {
+  temporaryId: string;
+  employeeName: string;
+  shiftDate: string;
+  startTime: string;
+  endTime: string;
+  departmentLabel: string;
+  sourceConfidence: "high" | "medium" | "low";
+  sourceNotes?: string;
+  ignored?: boolean;
+}
+
+export interface ParsedScheduleDraft {
+  sourceFileName: string;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  shifts: ParsedShiftDraft[];
+  warnings: string[];
+}
