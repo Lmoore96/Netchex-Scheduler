@@ -147,3 +147,47 @@ revoke all on function confirm_schedule_import(jsonb) from public;
 revoke all on function confirm_schedule_import(jsonb) from anon;
 revoke all on function confirm_schedule_import(jsonb) from authenticated;
 grant execute on function confirm_schedule_import(jsonb) to service_role;
+
+create or replace function replace_assignments(plan_id uuid, assignment_rows jsonb)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  assignment_record jsonb;
+  saved_count integer := 0;
+begin
+  delete from assignments
+  where daily_position_plan_id = plan_id;
+
+  for assignment_record in
+    select value
+    from jsonb_array_elements(coalesce(assignment_rows, '[]'::jsonb))
+  loop
+    insert into assignments (
+      daily_position_plan_id,
+      shift_id,
+      position_key,
+      sort_order,
+      notes
+    )
+    values (
+      plan_id,
+      (assignment_record->>'shiftId')::uuid,
+      assignment_record->>'positionKey',
+      (assignment_record->>'sortOrder')::integer,
+      assignment_record->>'notes'
+    );
+
+    saved_count := saved_count + 1;
+  end loop;
+
+  return saved_count;
+end;
+$$;
+
+revoke all on function replace_assignments(uuid, jsonb) from public;
+revoke all on function replace_assignments(uuid, jsonb) from anon;
+revoke all on function replace_assignments(uuid, jsonb) from authenticated;
+grant execute on function replace_assignments(uuid, jsonb) to service_role;

@@ -89,6 +89,8 @@ describe("AssignmentBoard", () => {
       />
     );
 
+    expect(screen.queryByText("Unknown employee")).not.toBeInTheDocument();
+
     await user.selectOptions(screen.getByLabelText("Move ALFATAH, DAKARAE"), "tower-1");
 
     expect(onChange).toHaveBeenCalledWith([

@@ -22,6 +22,7 @@ export function AssignmentBoard({
   onChange
 }: AssignmentBoardProps) {
   const orderedPositions = sortedPositions(positions);
+  const visibleShiftIds = new Set(shifts.map((shift) => shift.id));
 
   function shiftFor(shiftId: string) {
     return shifts.find((shift) => shift.id === shiftId);
@@ -33,7 +34,6 @@ export function AssignmentBoard({
 
   function moveShift(shift: Shift, positionKey: string) {
     const targetPosition = orderedPositions.find((position) => position.key === positionKey);
-    const visibleShiftIds = new Set(shifts.map((item) => item.id));
     const existingAssignment = assignmentFor(shift.id);
     let nextAssignments = assignments.filter((assignment) => assignment.shiftId !== shift.id);
 
@@ -68,6 +68,7 @@ export function AssignmentBoard({
         {orderedPositions.map((position) => {
           const positionAssignments = assignments
             .filter((assignment) => assignment.positionKey === position.key)
+            .filter((assignment) => visibleShiftIds.has(assignment.shiftId))
             .sort((first, second) => first.sortOrder - second.sortOrder);
 
           return (
