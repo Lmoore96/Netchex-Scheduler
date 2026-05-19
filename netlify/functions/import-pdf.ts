@@ -1,4 +1,5 @@
 import type { Handler } from "@netlify/functions";
+import { parsedScheduleDraftSchema } from "../../src/domain/validation";
 import { accessDeniedResponse, errorResponse, isAccessAllowed, jsonResponse, methodNotAllowedResponse } from "./_shared/http";
 import { parseNetchexPdf } from "./_shared/parser/netchexPdfParser";
 
@@ -38,6 +39,9 @@ export const handler: Handler = async (event) => {
 
   try {
     const draft = await parseNetchexPdf(bytes, fileName);
+    if (!parsedScheduleDraftSchema.safeParse(draft).success) {
+      return errorResponse("The schedule PDF could not be parsed", 422);
+    }
     return jsonResponse(draft);
   } catch {
     return errorResponse("The schedule PDF could not be parsed", 422);
