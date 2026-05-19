@@ -31,6 +31,7 @@ interface DayColumn {
 const dayHeaderPattern = /^(\d{1,2})\s+(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/;
 const timePattern = /^(\d{1,2}:\d{2})(AM|PM)$/i;
 const footerPattern = /^https?:|^Page\s+\d+\s+of\s+\d+$/i;
+const headerMetadataPattern = /^(Netchex Scheduler|\d{1,2}\/\d{1,2}\/\d{2},?\s*\d{0,2}|:|\d{2}|AM|PM)$/i;
 
 function toTime24(value: string, meridiem: string): string {
   const parsed = parse(`${value}${meridiem.toUpperCase()}`, "h:mma", new Date());
@@ -161,7 +162,7 @@ function departmentForShift(rows: TextRow[], column: DayColumn, afterRowIndex: n
     .filter((item) => Math.abs(item.x - column.x) <= 30)
     .filter((item) => !timePattern.test(item.str) && item.str !== "-")
     .map((item) => item.str)
-    .filter((value) => !isHoursText(value) && !footerPattern.test(value) && value.toUpperCase() !== "TIME OFF");
+    .filter((value) => !isHoursText(value) && !footerPattern.test(value) && !headerMetadataPattern.test(value) && value.toUpperCase() !== "TIME OFF");
 
   return normalizeDepartmentLabel(departmentParts.slice(0, 3).join(" "));
 }

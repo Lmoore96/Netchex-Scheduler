@@ -33,5 +33,6 @@ describe("parseNetchexPdf", () => {
     expect(draft.shifts.every((shift) => shift.endTime.match(/^\d{2}:\d{2}$/))).toBe(true);
     expect(draft.shifts.some((shift) => shift.departmentLabel === "UNAVAILABLE")).toBe(false);
     expect(draft.shifts.some((shift) => shift.departmentLabel === "Unknown Department")).toBe(false);
+    expect(draft.shifts.some((shift) => /\d{1,2}\/\d{1,2}\/\d{2}|Netchex Scheduler|,\s*\d{1,2}$/.test(shift.departmentLabel))).toBe(false);
   });
 });
