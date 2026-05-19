@@ -78,8 +78,67 @@ textarea {
   margin-top: 16px;
 }
 
+.position-list-editor__header h2 {
+  margin: 0;
+}
+
+.position-list-editor__header p,
+.position-list-editor__empty {
+  color: #4d5961;
+  margin: 4px 0 0;
+}
+
+.position-list-editor__form {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  margin-top: 18px;
+}
+
+.position-list-editor__form label {
+  grid-column: 1 / -1;
+  font-weight: 600;
+}
+
+.position-list-editor__form input {
+  border: 1px solid #b8c0b1;
+  border-radius: 6px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.position-list-editor__positions {
+  border: 1px solid #d8ddd2;
+  border-radius: 8px;
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+}
+
+.position-list-editor__positions li {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.position-list-editor__positions li + li {
+  border-top: 1px solid #e7eadf;
+}
+
+.position-list-editor__positions span:last-child {
+  color: #4d5961;
+  font-size: 13px;
+}
+
 @media (max-width: 760px) {
   .review-row {
+    grid-template-columns: 1fr;
+  }
+
+  .position-list-editor__form {
     grid-template-columns: 1fr;
   }
 }

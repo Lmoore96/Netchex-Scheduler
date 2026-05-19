@@ -19,3 +19,16 @@ export const parsedScheduleDraftSchema = z.object({
   shifts: z.array(parsedShiftDraftSchema),
   warnings: z.array(z.string())
 });
+
+export const positionDefinitionSchema = z.object({
+  key: z.string().min(1).max(80),
+  label: z.string().min(1).max(120),
+  sortOrder: z.number().int().min(0),
+  capacityMode: z.enum(["single", "multiple"])
+});
+
+export const positionListRequestSchema = z.object({
+  departmentId: z.string().min(1).max(120),
+  name: z.string().min(1).max(120),
+  positions: z.array(positionDefinitionSchema).min(1).max(100)
+});
