@@ -30,13 +30,22 @@ export function App() {
       {draft ? (
         <ReviewImport
           draft={draft}
-          onBack={() => setDraft(null)}
+          onBack={() => {
+            setConfirmError("");
+            setDraft(null);
+          }}
           onConfirm={(reviewed) => void confirmImport(reviewed)}
           isConfirming={isConfirming}
           confirmError={confirmError}
         />
       ) : (
-        <ImportPanel onDraft={setDraft} />
+        <ImportPanel
+          onDraft={(nextDraft) => {
+            setMessage("");
+            setConfirmError("");
+            setDraft(nextDraft);
+          }}
+        />
       )}
       {message ? <p role="status">{message}</p> : null}
     </Shell>

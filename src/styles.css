@@ -54,6 +54,12 @@ textarea {
   gap: 10px;
 }
 
+.review-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
 .review-row {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr 2fr;
