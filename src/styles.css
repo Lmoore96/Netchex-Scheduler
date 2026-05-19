@@ -60,6 +60,12 @@ textarea {
   gap: 8px;
 }
 
+.review-row--header {
+  color: #4d5961;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
 .actions {
   display: flex;
   gap: 10px;

@@ -26,6 +26,7 @@ export function ImportPanel({ onDraft }: { onDraft: (draft: ParsedScheduleDraft)
         <input
           type="file"
           accept="application/pdf"
+          disabled={isUploading}
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) void handleFile(file);

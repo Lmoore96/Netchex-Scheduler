@@ -8,11 +8,21 @@ import { confirmReviewedImport } from "./lib/storageClient";
 export function App() {
   const [draft, setDraft] = useState<ParsedScheduleDraft | null>(null);
   const [message, setMessage] = useState("");
+  const [confirmError, setConfirmError] = useState("");
+  const [isConfirming, setIsConfirming] = useState(false);
 
   async function confirmImport(reviewed: ParsedScheduleDraft) {
-    const result = await confirmReviewedImport(reviewed);
-    setMessage(`Import confirmed: ${result.importId}`);
-    setDraft(null);
+    setConfirmError("");
+    setIsConfirming(true);
+    try {
+      const result = await confirmReviewedImport(reviewed);
+      setMessage(`Import confirmed: ${result.importId}`);
+      setDraft(null);
+    } catch (caught) {
+      setConfirmError(caught instanceof Error ? caught.message : "Import could not be confirmed");
+    } finally {
+      setIsConfirming(false);
+    }
   }
 
   return (
@@ -22,6 +32,8 @@ export function App() {
           draft={draft}
           onBack={() => setDraft(null)}
           onConfirm={(reviewed) => void confirmImport(reviewed)}
+          isConfirming={isConfirming}
+          confirmError={confirmError}
         />
       ) : (
         <ImportPanel onDraft={setDraft} />

@@ -38,4 +38,20 @@ describe("ReviewImport", () => {
       })
     );
   });
+
+  it("shows confirmation errors and disables actions while confirming", () => {
+    render(
+      <ReviewImport
+        draft={draft}
+        onConfirm={() => undefined}
+        onBack={() => undefined}
+        isConfirming
+        confirmError="Import could not be confirmed"
+      />
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Import could not be confirmed");
+    expect(screen.getByRole("button", { name: "Confirming..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+  });
 });
