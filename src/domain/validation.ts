@@ -21,14 +21,37 @@ export const parsedScheduleDraftSchema = z.object({
 });
 
 export const positionDefinitionSchema = z.object({
-  key: z.string().min(1).max(80),
-  label: z.string().min(1).max(120),
+  key: z.string().trim().min(1).max(80),
+  label: z.string().trim().min(1).max(120),
   sortOrder: z.number().int().min(0),
   capacityMode: z.enum(["single", "multiple"])
 });
 
 export const positionListRequestSchema = z.object({
-  departmentId: z.string().min(1).max(120),
-  name: z.string().min(1).max(120),
+  departmentId: z.string().trim().min(1).max(120),
+  name: z.string().trim().min(1).max(120),
   positions: z.array(positionDefinitionSchema).min(1).max(100)
+}).superRefine((value, context) => {
+  const keys = new Set<string>();
+  const sortOrders = new Set<number>();
+
+  value.positions.forEach((position, index) => {
+    if (keys.has(position.key)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Position keys must be unique",
+        path: ["positions", index, "key"]
+      });
+    }
+    keys.add(position.key);
+
+    if (sortOrders.has(position.sortOrder)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Position sort orders must be unique",
+        path: ["positions", index, "sortOrder"]
+      });
+    }
+    sortOrders.add(position.sortOrder);
+  });
 });
