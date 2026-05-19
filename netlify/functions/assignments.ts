@@ -7,6 +7,7 @@ import {
   jsonResponse,
   methodNotAllowedResponse
 } from "./_shared/http";
+import { createSupabaseRepository } from "./_shared/repository";
 
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -29,5 +30,14 @@ export const handler: Handler = async (event) => {
     return errorResponse("Assignment data is invalid", 400);
   }
 
-  return jsonResponse({ saved: true, count: parsed.data.assignments.length });
+  try {
+    const repository = createSupabaseRepository();
+    const result = await repository.saveAssignments(
+      parsed.data.dailyPositionPlanId,
+      parsed.data.assignments
+    );
+    return jsonResponse(result);
+  } catch {
+    return errorResponse("Assignments could not be saved", 500);
+  }
 };

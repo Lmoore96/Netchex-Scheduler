@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { ParsedScheduleDraft, PositionDefinition } from "../../../src/domain/types";
+import type { Assignment, ParsedScheduleDraft, PositionDefinition } from "../../../src/domain/types";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -35,6 +35,35 @@ export function createSupabaseRepository() {
 
       if (error) throw error;
       return data;
+    },
+
+    async saveAssignments(
+      dailyPositionPlanId: string,
+      assignments: Array<Pick<Assignment, "shiftId" | "positionKey" | "sortOrder" | "notes">>
+    ) {
+      const { error: deleteError } = await supabase
+        .from("assignments")
+        .delete()
+        .eq("daily_position_plan_id", dailyPositionPlanId);
+
+      if (deleteError) throw deleteError;
+
+      if (assignments.length === 0) {
+        return { saved: true, count: 0 };
+      }
+
+      const rows = assignments.map((assignment) => ({
+        daily_position_plan_id: dailyPositionPlanId,
+        shift_id: assignment.shiftId,
+        position_key: assignment.positionKey,
+        sort_order: assignment.sortOrder,
+        notes: assignment.notes
+      }));
+
+      const { error: insertError } = await supabase.from("assignments").insert(rows);
+
+      if (insertError) throw insertError;
+      return { saved: true, count: rows.length };
     }
   };
 }

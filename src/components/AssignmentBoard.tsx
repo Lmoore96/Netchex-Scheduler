@@ -33,11 +33,14 @@ export function AssignmentBoard({
 
   function moveShift(shift: Shift, positionKey: string) {
     const targetPosition = orderedPositions.find((position) => position.key === positionKey);
+    const visibleShiftIds = new Set(shifts.map((item) => item.id));
+    const existingAssignment = assignmentFor(shift.id);
     let nextAssignments = assignments.filter((assignment) => assignment.shiftId !== shift.id);
 
     if (targetPosition?.capacityMode === "single") {
       nextAssignments = nextAssignments.filter(
-        (assignment) => assignment.positionKey !== targetPosition.key
+        (assignment) =>
+          assignment.positionKey !== targetPosition.key || !visibleShiftIds.has(assignment.shiftId)
       );
     }
 
@@ -45,8 +48,9 @@ export function AssignmentBoard({
       nextAssignments = [
         ...nextAssignments,
         {
-          id: assignmentFor(shift.id)?.id ?? `local-${shift.id}`,
-          dailyPositionPlanId: assignmentFor(shift.id)?.dailyPositionPlanId ?? "local-plan",
+          ...existingAssignment,
+          id: existingAssignment?.id ?? `local-${shift.id}`,
+          dailyPositionPlanId: existingAssignment?.dailyPositionPlanId ?? "local-plan",
           shiftId: shift.id,
           positionKey,
           sortOrder: nextAssignments.filter((assignment) => assignment.positionKey === positionKey)
