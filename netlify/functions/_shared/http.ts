@@ -26,7 +26,7 @@ export function accessDeniedResponse() {
 export function isAccessAllowed(event: HandlerEvent): boolean {
   const expected = process.env.SCHEDULE_APP_ACCESS_CODE;
   if (!expected) {
-    return process.env.ALLOW_UNAUTHENTICATED_IMPORT_API === "true";
+    return false;
   }
   return event.headers["x-access-code"] === expected;
 }

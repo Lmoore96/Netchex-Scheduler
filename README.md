@@ -26,6 +26,4 @@ Required Netlify environment variables:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SCHEDULE_APP_ACCESS_CODE`
 
-For local API testing without an access code, set `ALLOW_UNAUTHENTICATED_IMPORT_API=true`.
-
 Apply `supabase/migrations/0001_initial_schema.sql` to the Supabase project before using the app against a real database.
