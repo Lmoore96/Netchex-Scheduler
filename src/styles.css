@@ -25,6 +25,53 @@ textarea {
   padding: 24px;
 }
 
+.shell__header {
+  border-bottom: 1px solid #d8ddd2;
+  padding: 18px 24px;
+}
+
+.shell__header h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.panel {
+  max-width: 1120px;
+  margin: 24px auto;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #d8ddd2;
+  border-radius: 8px;
+}
+
+.upload input {
+  display: block;
+  margin-top: 8px;
+}
+
+.review-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.review-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 2fr;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+@media (max-width: 760px) {
+  .review-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;
