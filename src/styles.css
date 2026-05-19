@@ -133,12 +133,111 @@ textarea {
   font-size: 13px;
 }
 
+.day-department-picker {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.day-department-picker label,
+.assignment-board__moves label {
+  display: grid;
+  gap: 6px;
+}
+
+.day-department-picker span,
+.assignment-board__moves label span {
+  color: #4d5961;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.day-department-picker input,
+.day-department-picker select,
+.assignment-board__moves select {
+  border: 1px solid #b8c0b1;
+  border-radius: 6px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.assignment-board {
+  display: grid;
+  gap: 20px;
+}
+
+.assignment-board__positions {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.assignment-board__column,
+.assignment-board__scheduled {
+  border: 1px solid #d8ddd2;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.assignment-board__column-header {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.assignment-board__column h3,
+.assignment-board__scheduled h3 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.assignment-board__column-header span,
+.assignment-board__empty,
+.assignment-board__employee span,
+.assignment-board__assigned span {
+  color: #4d5961;
+  font-size: 13px;
+}
+
+.assignment-board__assigned,
+.assignment-board__moves {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.assignment-board__assigned li {
+  background: #f7f8f4;
+  border: 1px solid #e7eadf;
+  border-radius: 6px;
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+}
+
+.assignment-board__moves li {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 240px);
+}
+
+.assignment-board__employee {
+  display: grid;
+  gap: 2px;
+}
+
 @media (max-width: 760px) {
   .review-row {
     grid-template-columns: 1fr;
   }
 
-  .position-list-editor__form {
+  .position-list-editor__form,
+  .day-department-picker,
+  .assignment-board__moves li {
     grid-template-columns: 1fr;
   }
 }

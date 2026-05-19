@@ -55,3 +55,26 @@ export const positionListRequestSchema = z.object({
     sortOrders.add(position.sortOrder);
   });
 });
+
+export const assignmentRequestSchema = z.object({
+  dailyPositionPlanId: z.string().trim().min(1).max(120),
+  assignments: z.array(z.object({
+    shiftId: z.string().trim().min(1).max(120),
+    positionKey: z.string().trim().min(1).max(80),
+    sortOrder: z.number().int().min(0),
+    notes: z.string().trim().max(500).optional()
+  })).max(500)
+}).superRefine((value, context) => {
+  const shiftIds = new Set<string>();
+
+  value.assignments.forEach((assignment, index) => {
+    if (shiftIds.has(assignment.shiftId)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Assignments must be unique by shift",
+        path: ["assignments", index, "shiftId"]
+      });
+    }
+    shiftIds.add(assignment.shiftId);
+  });
+});
