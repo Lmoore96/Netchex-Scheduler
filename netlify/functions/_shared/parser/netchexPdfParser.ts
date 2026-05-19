@@ -17,6 +17,8 @@ interface PositionedTextItem {
 
 interface TextRow {
   y: number;
+  pageNumber: number;
+  order: number;
   items: PositionedTextItem[];
 }
 
@@ -26,7 +28,6 @@ interface DayColumn {
   x: number;
 }
 
-const shortDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const dayHeaderPattern = /^(\d{1,2})\s+(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/;
 const timePattern = /^(\d{1,2}:\d{2})(AM|PM)$/i;
 const footerPattern = /^https?:|^Page\s+\d+\s+of\s+\d+$/i;
@@ -45,15 +46,15 @@ function sortTextItems(items: PositionedTextItem[]): PositionedTextItem[] {
   });
 }
 
-function deriveDateRange(items: PositionedTextItem[]): { start: string; end: string } {
+function deriveDateRange(items: PositionedTextItem[]): { start: string; end: string } | undefined {
   const rangeLine = items.find((item) => /\d{2}\/\d{2}\/\d{2}\s*-\s*\d{2}\/\d{2}\/\d{2}/.test(item.str))?.str;
   if (!rangeLine) {
-    return { start: "2026-05-18", end: "2026-05-24" };
+    return undefined;
   }
 
   const match = rangeLine.match(/(\d{2})\/(\d{2})\/(\d{2})\s*-\s*(\d{2})\/(\d{2})\/(\d{2})/);
   if (!match) {
-    return { start: "2026-05-18", end: "2026-05-24" };
+    return undefined;
   }
 
   const [, startMonth, startDay, startYear, endMonth, endDay, endYear] = match;
@@ -92,16 +93,18 @@ function groupRows(items: PositionedTextItem[]): TextRow[] {
 
   for (const item of items) {
     const current = rows.at(-1);
-    if (current && Math.abs(current.y - item.y) <= 4) {
+    if (current && current.pageNumber === item.pageNumber && Math.abs(current.y - item.y) <= 4) {
       current.items.push(item);
       continue;
     }
 
-    rows.push({ y: item.y, items: [item] });
+    rows.push({ y: item.y, pageNumber: item.pageNumber, order: rows.length, items: [item] });
   }
 
   return rows.map((row) => ({
     y: row.y,
+    pageNumber: row.pageNumber,
+    order: row.order,
     items: row.items.sort((a, b) => a.x - b.x)
   }));
 }
@@ -138,17 +141,23 @@ function employeeNameForBlock(rows: TextRow[]): string {
   return normalizeDepartmentLabel(nameParts.join(" "));
 }
 
-function columnTimeItems(rows: TextRow[], column: DayColumn): PositionedTextItem[] {
-  return rows
-    .flatMap((row) => row.items)
-    .filter((item) => Math.abs(item.x - (column.x - 10)) <= 18 && timePattern.test(item.str))
-    .sort((a, b) => b.y - a.y);
+interface TimeEntry {
+  item: PositionedTextItem;
+  rowIndex: number;
 }
 
-function departmentForShift(rows: TextRow[], column: DayColumn, endY: number): string {
+function columnTimeEntries(rows: TextRow[], column: DayColumn): TimeEntry[] {
+  return rows.flatMap((row, rowIndex) =>
+    row.items
+      .filter((item) => Math.abs(item.x - (column.x - 10)) <= 18 && timePattern.test(item.str))
+      .map((item) => ({ item, rowIndex }))
+  );
+}
+
+function departmentForShift(rows: TextRow[], column: DayColumn, afterRowIndex: number): string {
   const departmentParts = rows
+    .slice(afterRowIndex + 1)
     .flatMap((row) => row.items)
-    .filter((item) => item.y < endY)
     .filter((item) => Math.abs(item.x - column.x) <= 30)
     .filter((item) => !timePattern.test(item.str) && item.str !== "-")
     .map((item) => item.str)
@@ -191,41 +200,49 @@ export async function parseNetchexPdf(
   sourceFileName: string
 ): Promise<ParsedScheduleDraft> {
   const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer), useWorkerFetch: false });
-  const document = await loadingTask.promise;
   const items: PositionedTextItem[] = [];
 
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-    const page = await document.getPage(pageNumber);
-    const content = await page.getTextContent();
-    items.push(
-      ...(content.items as TextItem[])
-        .map((item) => ({
-          str: item.str.trim(),
-          x: item.transform[4],
-          y: item.transform[5],
-          pageNumber
-        }))
-        .filter((item) => item.str)
-    );
-  }
-
-  const sortedItems = sortTextItems(items);
-  const range = deriveDateRange(sortedItems);
-  const dayColumns = buildDayColumns(sortedItems, range.start);
-  const shifts: ParsedShiftDraft[] = [];
   const warnings: string[] = [];
+  let document;
 
-  if (dayColumns.length === 0) {
-    warnings.push("No day headers were found in the PDF.");
-  }
+  try {
+    document = await loadingTask.promise;
 
-  const pages = new Map<number, PositionedTextItem[]>();
-  for (const item of sortedItems) {
-    pages.set(item.pageNumber, [...(pages.get(item.pageNumber) ?? []), item]);
-  }
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      items.push(
+        ...(content.items as TextItem[])
+          .map((item) => ({
+            str: item.str.trim(),
+            x: item.transform[4],
+            y: item.transform[5],
+            pageNumber
+          }))
+          .filter((item) => item.str)
+      );
+    }
 
-  for (const pageItems of pages.values()) {
-    const rows = groupRows(sortTextItems(pageItems));
+    const sortedItems = sortTextItems(items);
+    const range = deriveDateRange(sortedItems);
+    if (!range) {
+      return {
+        sourceFileName,
+        dateRangeStart: "",
+        dateRangeEnd: "",
+        shifts: [],
+        warnings: ["The schedule date range could not be read from the PDF."]
+      };
+    }
+
+    const dayColumns = buildDayColumns(sortedItems, range.start);
+    const shifts: ParsedShiftDraft[] = [];
+
+    if (dayColumns.length === 0) {
+      warnings.push("No day headers were found in the PDF.");
+    }
+
+    const rows = groupRows(sortedItems);
     const employeeStartIndexes = rows.flatMap((row, index) => (isEmployeeStart(row) ? [index] : []));
 
     for (let index = 0; index < employeeStartIndexes.length; index += 1) {
@@ -236,23 +253,33 @@ export async function parseNetchexPdf(
       if (!employeeName) continue;
 
       for (const column of dayColumns) {
-        const timeItems = columnTimeItems(blockRows, column);
-        for (let timeIndex = 0; timeIndex + 1 < timeItems.length; timeIndex += 2) {
-          const startItem = timeItems[timeIndex];
-          const endItem = timeItems[timeIndex + 1];
-          const departmentLabel = departmentForShift(blockRows, column, endItem.y);
-          const shift = shiftFromTimes(employeeName, column, startItem, endItem, departmentLabel, shifts.length + 1);
+        const timeEntries = columnTimeEntries(blockRows, column);
+        for (let timeIndex = 0; timeIndex + 1 < timeEntries.length; timeIndex += 2) {
+          const startEntry = timeEntries[timeIndex];
+          const endEntry = timeEntries[timeIndex + 1];
+          const departmentLabel = departmentForShift(blockRows, column, endEntry.rowIndex);
+          const shift = shiftFromTimes(
+            employeeName,
+            column,
+            startEntry.item,
+            endEntry.item,
+            departmentLabel,
+            shifts.length + 1
+          );
           if (shift) shifts.push(shift);
         }
       }
     }
-  }
 
-  return {
-    sourceFileName,
-    dateRangeStart: range.start,
-    dateRangeEnd: range.end,
-    shifts,
-    warnings
-  };
+    return {
+      sourceFileName,
+      dateRangeStart: range.start,
+      dateRangeEnd: range.end,
+      shifts,
+      warnings
+    };
+  } finally {
+    await document?.destroy();
+    await loadingTask.destroy();
+  }
 }
