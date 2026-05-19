@@ -74,7 +74,7 @@ export function ReviewImport({
               onChange={(event) => updateShift(shift.temporaryId, "endTime", event.target.value)}
             />
             <input
-              aria-label={`Department for ${shift.employeeName}`}
+              aria-label={`Department for shift ${shift.temporaryId}`}
               value={shift.departmentLabel}
               onChange={(event) =>
                 updateShift(shift.temporaryId, "departmentLabel", event.target.value)

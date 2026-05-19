@@ -28,8 +28,8 @@ describe("ReviewImport", () => {
     const onConfirm = vi.fn();
     render(<ReviewImport draft={draft} onConfirm={onConfirm} onBack={() => undefined} />);
 
-    await user.clear(screen.getByLabelText("Department for AL-RAJAI, MAI"));
-    await user.type(screen.getByLabelText("Department for AL-RAJAI, MAI"), "Splash Team");
+    await user.clear(screen.getByLabelText("Department for shift one"));
+    await user.type(screen.getByLabelText("Department for shift one"), "Splash Team");
     await user.click(screen.getByRole("button", { name: "Confirm import" }));
 
     expect(onConfirm).toHaveBeenCalledWith(
