@@ -220,22 +220,41 @@ export function App() {
   return (
     <Shell>
       <nav className="tabs no-print" aria-label="Workflow">
-        <button type="button" onClick={() => setView("import")}>
+        <button
+          type="button"
+          className={view === "import" ? "is-active" : undefined}
+          onClick={() => setView("import")}
+        >
           Import
         </button>
-        <button type="button" onClick={() => setView("positions")} disabled={shifts.length === 0}>
+        <button
+          type="button"
+          className={view === "positions" ? "is-active" : undefined}
+          onClick={() => setView("positions")}
+          disabled={shifts.length === 0}
+        >
           Positions
         </button>
-        <button type="button" onClick={() => setView("assign")} disabled={shifts.length === 0}>
+        <button
+          type="button"
+          className={view === "assign" ? "is-active" : undefined}
+          onClick={() => setView("assign")}
+          disabled={shifts.length === 0}
+        >
           Assign
         </button>
-        <button type="button" onClick={() => setView("print")} disabled={shifts.length === 0}>
+        <button
+          type="button"
+          className={view === "print" ? "is-active" : undefined}
+          onClick={() => setView("print")}
+          disabled={shifts.length === 0}
+        >
           Print
         </button>
       </nav>
 
       {shifts.length > 0 && view !== "import" ? (
-        <section className="panel no-print">
+        <section className="panel panel--filters no-print">
           <DayDepartmentPicker
             selectedDate={currentDate}
             availableDates={dates}
@@ -253,7 +272,7 @@ export function App() {
 
       {view === "positions" ? (
         <>
-          {positionListError ? <p role="alert">{positionListError}</p> : null}
+          {positionListError ? <p className="app-alert" role="alert">{positionListError}</p> : null}
           <PositionListEditor
             departmentName={currentDepartment}
             positionLists={departmentLists}
@@ -266,10 +285,14 @@ export function App() {
       ) : null}
 
       {view === "assign" ? (
-        <section className="panel">
-          <h2>{currentDepartment} Assignments</h2>
-          <p>{currentDate}</p>
-          <p>Using list: {selectedList?.name ?? "Default list"}</p>
+        <section className="panel panel--workspace">
+          <div className="section-heading">
+            <div>
+              <h2>{currentDepartment} Assignments</h2>
+              <p>{currentDate}</p>
+            </div>
+            <span>{selectedList?.name ?? "Default list"}</span>
+          </div>
           <AssignmentBoard
             positions={selectedPositions}
             shifts={visibleShifts}
