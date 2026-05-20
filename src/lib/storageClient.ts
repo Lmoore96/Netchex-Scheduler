@@ -83,6 +83,10 @@ const positionListResponseSchema = z.object({
   positionList: positionListSchema
 });
 
+const deletePositionListResponseSchema = z.object({
+  deleted: z.boolean()
+});
+
 export async function loadPositionLists(): Promise<PositionList[]> {
   const response = await fetch("/.netlify/functions/position-lists");
   return positionListsResponseSchema.parse(await parseJsonResponse(response)).positionLists;
@@ -100,4 +104,12 @@ export async function savePositionList(positionList: PositionList): Promise<Posi
   });
 
   return positionListResponseSchema.parse(await parseJsonResponse(response)).positionList;
+}
+
+export async function deletePositionList(id: string): Promise<void> {
+  const response = await fetch(`/.netlify/functions/position-lists?id=${encodeURIComponent(id)}`, {
+    method: "DELETE"
+  });
+
+  deletePositionListResponseSchema.parse(await parseJsonResponse(response));
 }
