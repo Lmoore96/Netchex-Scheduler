@@ -12,6 +12,8 @@ interface PositionListEditorProps {
   onSaveList?: (list: PositionList) => void;
 }
 
+type CapacityMode = PositionDefinition["capacityMode"];
+
 function positionKeyFromLabel(label: string, existingKeys: Set<string>) {
   const baseKey =
     label
@@ -55,6 +57,7 @@ export function PositionListEditor({
   const sourcePositions = selectedList?.positions ?? initialPositions;
   const [positions, setPositions] = useState<PositionDefinition[]>(() => sortPositions(sourcePositions));
   const [newPositionLabel, setNewPositionLabel] = useState("");
+  const [newPositionCapacityMode, setNewPositionCapacityMode] = useState<CapacityMode>("single");
   const [newListName, setNewListName] = useState("");
   const trimmedLabel = newPositionLabel.trim();
   const trimmedListName = newListName.trim();
@@ -75,16 +78,25 @@ export function PositionListEditor({
           key: positionKeyFromLabel(trimmedLabel, currentKeys),
           label: trimmedLabel,
           sortOrder: currentPositions.length + 1,
-          capacityMode: "single"
+          capacityMode: newPositionCapacityMode
         }
       ];
     });
     setNewPositionLabel("");
+    setNewPositionCapacityMode("single");
   }
 
   function removePosition(positionKey: string) {
     setPositions((currentPositions) =>
       normalizeSortOrder(currentPositions.filter((position) => position.key !== positionKey))
+    );
+  }
+
+  function updatePositionCapacityMode(positionKey: string, capacityMode: CapacityMode) {
+    setPositions((currentPositions) =>
+      currentPositions.map((position) =>
+        position.key === positionKey ? { ...position, capacityMode } : position
+      )
     );
   }
 
@@ -160,6 +172,15 @@ export function PositionListEditor({
           value={newPositionLabel}
           onChange={(event) => setNewPositionLabel(event.target.value)}
         />
+        <label htmlFor="new-position-capacity">Capacity</label>
+        <select
+          id="new-position-capacity"
+          value={newPositionCapacityMode}
+          onChange={(event) => setNewPositionCapacityMode(event.target.value as CapacityMode)}
+        >
+          <option value="single">Single</option>
+          <option value="multiple">Multiple</option>
+        </select>
         <button type="submit" disabled={!trimmedLabel}>
           Add position
         </button>
@@ -170,7 +191,19 @@ export function PositionListEditor({
           {positions.map((position) => (
             <li key={position.key}>
               <span>{position.label}</span>
-              <span>{position.capacityMode === "single" ? "Single" : "Multiple"}</span>
+              <label>
+                <span>Capacity</span>
+                <select
+                  aria-label={`Capacity for ${position.label}`}
+                  value={position.capacityMode}
+                  onChange={(event) =>
+                    updatePositionCapacityMode(position.key, event.target.value as CapacityMode)
+                  }
+                >
+                  <option value="single">Single</option>
+                  <option value="multiple">Multiple</option>
+                </select>
+              </label>
               <button type="button" onClick={() => removePosition(position.key)}>
                 Delete
               </button>
