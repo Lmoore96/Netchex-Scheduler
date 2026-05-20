@@ -4,15 +4,16 @@ import type { PositionDefinition, PositionList } from "../domain/types";
 interface PositionListEditorProps {
   departmentName: string;
   initialPositions?: PositionDefinition[];
-  onSave?: (positions: PositionDefinition[]) => void;
+  onSave?: (positions: PositionDefinition[]) => void | Promise<void>;
   positionLists?: PositionList[];
   selectedListId?: string;
   onSelectList?: (listId: string) => void;
-  onCreateList?: (name: string) => void;
-  onSaveList?: (list: PositionList) => void;
+  onCreateList?: (name: string) => void | Promise<void>;
+  onSaveList?: (list: PositionList) => void | Promise<void>;
 }
 
 type CapacityMode = PositionDefinition["capacityMode"];
+type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 function positionKeyFromLabel(label: string, existingKeys: Set<string>) {
   const baseKey =
@@ -40,6 +41,14 @@ function normalizeSortOrder(positions: PositionDefinition[]) {
   return positions.map((position, index) => ({ ...position, sortOrder: index + 1 }));
 }
 
+function saveMessage(saveState: SaveState) {
+  if (saveState === "dirty") return "Unsaved changes";
+  if (saveState === "saving") return "Saving...";
+  if (saveState === "saved") return "List saved.";
+  if (saveState === "error") return "Save failed. Try again.";
+  return "";
+}
+
 export function PositionListEditor({
   departmentName,
   initialPositions = [],
@@ -55,16 +64,28 @@ export function PositionListEditor({
     [positionLists, selectedListId]
   );
   const sourcePositions = selectedList?.positions ?? initialPositions;
+  const singleCount = sourcePositions.filter((position) => position.capacityMode === "single").length;
+  const multipleCount = sourcePositions.filter((position) => position.capacityMode === "multiple").length;
   const [positions, setPositions] = useState<PositionDefinition[]>(() => sortPositions(sourcePositions));
+  const [isEditing, setIsEditing] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [newPositionLabel, setNewPositionLabel] = useState("");
   const [newPositionCapacityMode, setNewPositionCapacityMode] = useState<CapacityMode>("single");
   const [newListName, setNewListName] = useState("");
   const trimmedLabel = newPositionLabel.trim();
   const trimmedListName = newListName.trim();
+  const statusMessage = saveMessage(saveState);
 
   useEffect(() => {
     setPositions(sortPositions(sourcePositions));
+    setIsEditing(false);
+    setNewPositionLabel("");
+    setNewPositionCapacityMode("single");
   }, [selectedList?.id, sourcePositions]);
+
+  function markDirty() {
+    setSaveState("dirty");
+  }
 
   function addPosition() {
     if (!trimmedLabel) return;
@@ -84,12 +105,14 @@ export function PositionListEditor({
     });
     setNewPositionLabel("");
     setNewPositionCapacityMode("single");
+    markDirty();
   }
 
   function removePosition(positionKey: string) {
     setPositions((currentPositions) =>
       normalizeSortOrder(currentPositions.filter((position) => position.key !== positionKey))
     );
+    markDirty();
   }
 
   function updatePositionCapacityMode(positionKey: string, capacityMode: CapacityMode) {
@@ -98,18 +121,33 @@ export function PositionListEditor({
         position.key === positionKey ? { ...position, capacityMode } : position
       )
     );
+    markDirty();
   }
 
-  function saveList() {
+  async function saveList() {
     const sortedPositions = normalizeSortOrder(positions);
     setPositions(sortedPositions);
+    setSaveState("saving");
 
-    if (selectedList && onSaveList) {
-      onSaveList({ ...selectedList, positions: sortedPositions });
-      return;
+    try {
+      if (selectedList && onSaveList) {
+        await onSaveList({ ...selectedList, positions: sortedPositions });
+      } else {
+        await onSave?.(sortedPositions);
+      }
+      setSaveState("saved");
+      setIsEditing(false);
+    } catch {
+      setSaveState("error");
     }
+  }
 
-    onSave?.(sortedPositions);
+  function cancelEditing() {
+    setPositions(sortPositions(sourcePositions));
+    setNewPositionLabel("");
+    setNewPositionCapacityMode("single");
+    setSaveState("idle");
+    setIsEditing(false);
   }
 
   function handleAddSubmit(event: FormEvent<HTMLFormElement>) {
@@ -117,12 +155,18 @@ export function PositionListEditor({
     addPosition();
   }
 
-  function handleCreateList(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateList(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!trimmedListName) return;
 
-    onCreateList?.(trimmedListName);
-    setNewListName("");
+    setSaveState("saving");
+    try {
+      await onCreateList?.(trimmedListName);
+      setNewListName("");
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
   }
 
   return (
@@ -130,26 +174,60 @@ export function PositionListEditor({
       <div className="position-list-editor__header">
         <div>
           <h2 id="position-list-heading">{departmentName} positions</h2>
-          <p>Manage the positions managers can assign for this department.</p>
+          <p>Choose a saved list, then edit it only when changes are needed.</p>
         </div>
+        {statusMessage ? (
+          <p className={`position-list-editor__status position-list-editor__status--${saveState}`} role="status">
+            {statusMessage}
+          </p>
+        ) : null}
       </div>
 
-      {positionLists.length > 0 ? (
-        <div className="position-list-editor__list-tools">
-          <label htmlFor="position-list-select">Position list</label>
-          <select
-            id="position-list-select"
-            value={selectedList?.id ?? ""}
-            onChange={(event) => onSelectList?.(event.target.value)}
-          >
-            {positionLists.map((list) => (
-              <option key={list.id} value={list.id}>
-                {list.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
+      <div className="position-list-editor__summary">
+        {positionLists.length > 0 ? (
+          <div className="position-list-editor__list-tools">
+            <label htmlFor="position-list-select">Position list</label>
+            <select
+              id="position-list-select"
+              value={selectedList?.id ?? ""}
+              onChange={(event) => {
+                onSelectList?.(event.target.value);
+                setSaveState("idle");
+              }}
+            >
+              {positionLists.map((list) => (
+                <option key={list.id} value={list.id}>
+                  {list.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+
+        <article className="position-list-editor__summary-card">
+          <div>
+            <span>Selected list</span>
+            <strong>{selectedList?.name ?? "No list selected"}</strong>
+          </div>
+          <dl>
+            <div>
+              <dt>Positions</dt>
+              <dd>{sourcePositions.length}</dd>
+            </div>
+            <div>
+              <dt>Single</dt>
+              <dd>{singleCount}</dd>
+            </div>
+            <div>
+              <dt>Multiple</dt>
+              <dd>{multipleCount}</dd>
+            </div>
+          </dl>
+          <button type="button" disabled={!selectedList} onClick={() => setIsEditing(true)}>
+            Edit list
+          </button>
+        </article>
+      </div>
 
       {onCreateList ? (
         <form className="position-list-editor__form" onSubmit={handleCreateList}>
@@ -159,66 +237,73 @@ export function PositionListEditor({
             value={newListName}
             onChange={(event) => setNewListName(event.target.value)}
           />
-          <button type="submit" disabled={!trimmedListName}>
+          <button type="submit" disabled={!trimmedListName || saveState === "saving"}>
             Create list
           </button>
         </form>
       ) : null}
 
-      <form className="position-list-editor__form" onSubmit={handleAddSubmit}>
-        <label htmlFor="new-position">New position</label>
-        <input
-          id="new-position"
-          value={newPositionLabel}
-          onChange={(event) => setNewPositionLabel(event.target.value)}
-        />
-        <label htmlFor="new-position-capacity">Capacity</label>
-        <select
-          id="new-position-capacity"
-          value={newPositionCapacityMode}
-          onChange={(event) => setNewPositionCapacityMode(event.target.value as CapacityMode)}
-        >
-          <option value="single">Single</option>
-          <option value="multiple">Multiple</option>
-        </select>
-        <button type="submit" disabled={!trimmedLabel}>
-          Add position
-        </button>
-      </form>
+      {isEditing ? (
+        <div className="position-list-editor__editing">
+          <form className="position-list-editor__form" onSubmit={handleAddSubmit}>
+            <label htmlFor="new-position">New position</label>
+            <input
+              id="new-position"
+              value={newPositionLabel}
+              onChange={(event) => setNewPositionLabel(event.target.value)}
+            />
+            <label htmlFor="new-position-capacity">Capacity</label>
+            <select
+              id="new-position-capacity"
+              value={newPositionCapacityMode}
+              onChange={(event) => setNewPositionCapacityMode(event.target.value as CapacityMode)}
+            >
+              <option value="single">Single</option>
+              <option value="multiple">Multiple</option>
+            </select>
+            <button type="submit" disabled={!trimmedLabel}>
+              Add position
+            </button>
+          </form>
 
-      {positions.length > 0 ? (
-        <ul className="position-list-editor__positions" aria-label={`${departmentName} position list`}>
-          {positions.map((position) => (
-            <li key={position.key}>
-              <span>{position.label}</span>
-              <label>
-                <span>Capacity</span>
-                <select
-                  aria-label={`Capacity for ${position.label}`}
-                  value={position.capacityMode}
-                  onChange={(event) =>
-                    updatePositionCapacityMode(position.key, event.target.value as CapacityMode)
-                  }
-                >
-                  <option value="single">Single</option>
-                  <option value="multiple">Multiple</option>
-                </select>
-              </label>
-              <button type="button" onClick={() => removePosition(position.key)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="position-list-editor__empty">No positions have been added yet.</p>
-      )}
+          {positions.length > 0 ? (
+            <ul className="position-list-editor__positions" aria-label={`${departmentName} position list`}>
+              {positions.map((position) => (
+                <li key={position.key}>
+                  <span>{position.label}</span>
+                  <label>
+                    <span>Capacity</span>
+                    <select
+                      aria-label={`Capacity for ${position.label}`}
+                      value={position.capacityMode}
+                      onChange={(event) =>
+                        updatePositionCapacityMode(position.key, event.target.value as CapacityMode)
+                      }
+                    >
+                      <option value="single">Single</option>
+                      <option value="multiple">Multiple</option>
+                    </select>
+                  </label>
+                  <button type="button" onClick={() => removePosition(position.key)}>
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="position-list-editor__empty">No positions have been added yet.</p>
+          )}
 
-      <div className="actions">
-        <button type="button" onClick={saveList}>
-          Save list
-        </button>
-      </div>
+          <div className="actions">
+            <button type="button" onClick={() => void saveList()} disabled={saveState === "saving"}>
+              {saveState === "saving" ? "Saving..." : "Save list"}
+            </button>
+            <button type="button" onClick={cancelEditing} disabled={saveState === "saving"}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
