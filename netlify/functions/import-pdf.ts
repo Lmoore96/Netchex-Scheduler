@@ -9,6 +9,10 @@ function isPdf(bytes: Buffer): boolean {
   return bytes.subarray(0, 5).toString("utf8") === "%PDF-";
 }
 
+function parseErrorResponse(message: string, details: unknown) {
+  return jsonResponse({ error: message, details }, 422);
+}
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return methodNotAllowedResponse();
@@ -39,11 +43,21 @@ export const handler: Handler = async (event) => {
 
   try {
     const draft = await parseNetchexPdf(bytes, fileName);
-    if (!parsedScheduleDraftSchema.safeParse(draft).success) {
-      return errorResponse("The schedule PDF could not be parsed", 422);
+    const parsed = parsedScheduleDraftSchema.safeParse(draft);
+    if (!parsed.success) {
+      return parseErrorResponse("The schedule PDF could not be parsed", {
+        reason: "Parsed PDF did not match expected schedule shape",
+        issues: parsed.error.issues.map((issue) => ({ path: issue.path, message: issue.message })),
+        dateRangeStart: draft.dateRangeStart,
+        dateRangeEnd: draft.dateRangeEnd,
+        shiftCount: draft.shifts.length,
+        warnings: draft.warnings
+      });
     }
     return jsonResponse(draft);
-  } catch {
-    return errorResponse("The schedule PDF could not be parsed", 422);
+  } catch (caught) {
+    return parseErrorResponse("The schedule PDF could not be parsed", {
+      reason: caught instanceof Error ? caught.message : "Unknown parser error"
+    });
   }
 };
