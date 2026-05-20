@@ -45,8 +45,18 @@ export const handler: Handler = async (event) => {
       return jsonResponse({ positionLists: positionLists.map(toPositionList) });
     }
 
+    if (event.httpMethod === "DELETE") {
+      const id = event.queryStringParameters?.id;
+      if (!id) {
+        return errorResponse("Position list id is required", 400);
+      }
+
+      await repository.deletePositionList(id);
+      return jsonResponse({ deleted: true });
+    }
+
     if (event.httpMethod !== "POST") {
-      return errorResponse("Method not allowed", 405, { Allow: "GET, POST" });
+      return errorResponse("Method not allowed", 405, { Allow: "GET, POST, DELETE" });
     }
 
     let body: unknown;
@@ -73,7 +83,7 @@ export const handler: Handler = async (event) => {
     return jsonResponse({ positionList: toPositionList(positionList) });
   } catch (caught) {
     return jsonResponse(
-      { error: "Position lists could not be loaded or saved", details: errorDetails(caught) },
+      { error: "Position lists could not be loaded, saved, or deleted", details: errorDetails(caught) },
       500
     );
   }
