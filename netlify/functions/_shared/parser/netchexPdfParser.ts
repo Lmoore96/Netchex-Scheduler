@@ -246,7 +246,11 @@ export async function parseNetchexPdf(
   buffer: Buffer | Uint8Array,
   sourceFileName: string
 ): Promise<ParsedScheduleDraft> {
-  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer), useWorkerFetch: false });
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(buffer),
+    disableWorker: true,
+    useWorkerFetch: false
+  });
   const items: PositionedTextItem[] = [];
 
   const warnings: string[] = [];
