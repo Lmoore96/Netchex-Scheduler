@@ -26,14 +26,15 @@ export function ImportPanel({ onDraft, isImporting = false, externalError = "" }
   }
 
   return (
-    <section className="panel">
-      <h2>Import Netchex PDF</h2>
+    <section className="panel import-panel">
+      <h2>Upload schedule</h2>
       <label className="upload">
-        <span>Choose PDF</span>
+        <span>Import PDF</span>
         <input
           type="file"
           accept="application/pdf"
           disabled={isBusy}
+          aria-label="Import PDF"
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) void handleFile(file);
