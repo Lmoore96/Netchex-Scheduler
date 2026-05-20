@@ -32,6 +32,32 @@ const dayHeaderPattern = /^(\d{1,2})\s+(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/;
 const timePattern = /^(\d{1,2}:\d{2})(AM|PM)$/i;
 const footerPattern = /^https?:|^Page\s+\d+\s+of\s+\d+$/i;
 const headerMetadataPattern = /^(Netchex Scheduler|\d{1,2}\/\d{1,2}\/\d{2},?\s*\d{0,2}|:|\d{2}|AM|PM)$/i;
+const monthNumbers: Record<string, string> = {
+  jan: "01",
+  january: "01",
+  feb: "02",
+  february: "02",
+  mar: "03",
+  march: "03",
+  apr: "04",
+  april: "04",
+  may: "05",
+  jun: "06",
+  june: "06",
+  jul: "07",
+  july: "07",
+  aug: "08",
+  august: "08",
+  sep: "09",
+  sept: "09",
+  september: "09",
+  oct: "10",
+  october: "10",
+  nov: "11",
+  november: "11",
+  dec: "12",
+  december: "12"
+};
 
 function toTime24(value: string, meridiem: string): string {
   const parsed = parse(`${value}${meridiem.toUpperCase()}`, "h:mma", new Date());
@@ -47,21 +73,41 @@ function sortTextItems(items: PositionedTextItem[]): PositionedTextItem[] {
   });
 }
 
+function isoDate(year: string, month: string, day: string): string {
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
 function deriveDateRange(items: PositionedTextItem[]): { start: string; end: string } | undefined {
-  const rangeLine = items.find((item) => /\d{2}\/\d{2}\/\d{2}\s*-\s*\d{2}\/\d{2}\/\d{2}/.test(item.str))?.str;
-  if (!rangeLine) {
+  const text = items.map((item) => item.str).join(" ");
+
+  const numericMatch = text.match(
+    /(\d{2})\/(\d{2})\/(\d{2})\s*-\s*(\d{2})\/(\d{2})\/(\d{2})/
+  );
+  if (numericMatch) {
+    const [, startMonth, startDay, startYear, endMonth, endDay, endYear] = numericMatch;
+    return {
+      start: isoDate(`20${startYear}`, startMonth, startDay),
+      end: isoDate(`20${endYear}`, endMonth, endDay)
+    };
+  }
+
+  const namedMatch = text.match(
+    /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})\s*-\s*(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+)?(\d{1,2}),?\s*(20\d{2})\b/i
+  );
+  if (!namedMatch) {
     return undefined;
   }
 
-  const match = rangeLine.match(/(\d{2})\/(\d{2})\/(\d{2})\s*-\s*(\d{2})\/(\d{2})\/(\d{2})/);
-  if (!match) {
+  const [, startMonthName, startDay, endMonthName, endDay, year] = namedMatch;
+  const startMonth = monthNumbers[startMonthName.toLowerCase()];
+  const endMonth = monthNumbers[(endMonthName ?? startMonthName).toLowerCase()];
+  if (!startMonth || !endMonth) {
     return undefined;
   }
 
-  const [, startMonth, startDay, startYear, endMonth, endDay, endYear] = match;
   return {
-    start: `20${startYear}-${startMonth}-${startDay}`,
-    end: `20${endYear}-${endMonth}-${endDay}`
+    start: isoDate(year, startMonth, startDay),
+    end: isoDate(year, endMonth, endDay)
   };
 }
 
