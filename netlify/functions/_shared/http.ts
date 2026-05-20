@@ -20,13 +20,10 @@ export function methodNotAllowedResponse() {
 }
 
 export function accessDeniedResponse() {
-  return errorResponse("Access code is missing or invalid", 401);
+  return errorResponse("Access denied", 401);
 }
 
 export function isAccessAllowed(event: HandlerEvent): boolean {
-  const expected = process.env.SCHEDULE_APP_ACCESS_CODE;
-  if (!expected) {
-    return false;
-  }
-  return event.headers["x-access-code"] === expected;
+  void event;
+  return true;
 }
