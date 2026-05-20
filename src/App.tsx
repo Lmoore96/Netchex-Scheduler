@@ -54,6 +54,13 @@ function defaultListForDepartment(departmentName: string): PositionList {
   };
 }
 
+function samePositionList(first: PositionList, second: PositionList) {
+  return (
+    first.id === second.id ||
+    (first.departmentId === second.departmentId && first.name === second.name)
+  );
+}
+
 function withDefaultLists(lists: PositionList[], departmentNames: string[]) {
   const nextLists = [...lists];
 
@@ -161,8 +168,8 @@ export function App() {
 
   function applyPositionList(nextList: PositionList) {
     setPositionLists((currentLists) =>
-      currentLists.some((list) => list.id === nextList.id)
-        ? currentLists.map((list) => (list.id === nextList.id ? nextList : list))
+      currentLists.some((list) => samePositionList(list, nextList))
+        ? currentLists.map((list) => (samePositionList(list, nextList) ? nextList : list))
         : [...currentLists, nextList]
     );
     setSelectedListIds((current) => ({ ...current, [nextList.departmentId]: nextList.id }));
