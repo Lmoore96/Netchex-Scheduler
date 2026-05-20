@@ -62,6 +62,10 @@ function samePositionList(first: PositionList, second: PositionList) {
   );
 }
 
+function isSavedPositionList(list: PositionList) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(list.id);
+}
+
 function withDefaultLists(lists: PositionList[], departmentNames: string[]) {
   const nextLists = [...lists];
 
@@ -197,7 +201,10 @@ export function App() {
     setPositionListError("");
 
     try {
-      await deletePositionListRequest(listToDelete.id);
+      if (isSavedPositionList(listToDelete)) {
+        await deletePositionListRequest(listToDelete.id);
+      }
+
       setPositionLists((currentLists) =>
         currentLists.filter((list) => !samePositionList(list, listToDelete))
       );
