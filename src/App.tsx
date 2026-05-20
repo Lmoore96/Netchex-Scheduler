@@ -4,12 +4,11 @@ import { DayDepartmentPicker } from "./components/DayDepartmentPicker";
 import { ImportPanel } from "./components/ImportPanel";
 import { PositionListEditor } from "./components/PositionListEditor";
 import { PrintView } from "./components/PrintView";
-import { ReviewImport } from "./components/ReviewImport";
 import { Shell } from "./components/Shell";
 import type { Assignment, ParsedScheduleDraft, PositionDefinition, PositionList, Shift } from "./domain/types";
 import { confirmReviewedImport } from "./lib/storageClient";
 
-type View = "import" | "review" | "positions" | "assign" | "print";
+type View = "import" | "positions" | "assign" | "print";
 
 const starterPositions: PositionDefinition[] = [
   { key: "lead", label: "Lead", sortOrder: 0, capacityMode: "single" },
@@ -53,7 +52,6 @@ function defaultListForDepartment(departmentName: string): PositionList {
 
 export function App() {
   const [view, setView] = useState<View>("import");
-  const [draft, setDraft] = useState<ParsedScheduleDraft | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [positionLists, setPositionLists] = useState<PositionList[]>([]);
   const [selectedListIds, setSelectedListIds] = useState<Record<string, string>>({});
@@ -98,7 +96,6 @@ export function App() {
       setPositionLists(defaultLists);
       setSelectedListIds(Object.fromEntries(defaultLists.map((list) => [list.departmentId, list.id])));
       setAssignments([]);
-      setDraft(null);
       setView("positions");
     } catch (caught) {
       setConfirmError(caught instanceof Error ? caught.message : "Import could not be confirmed");
@@ -160,7 +157,7 @@ export function App() {
         </button>
       </nav>
 
-      {shifts.length > 0 && view !== "import" && view !== "review" ? (
+      {shifts.length > 0 && view !== "import" ? (
         <section className="panel no-print">
           <DayDepartmentPicker
             selectedDate={currentDate}
@@ -174,26 +171,7 @@ export function App() {
       ) : null}
 
       {view === "import" ? (
-        <ImportPanel
-          onDraft={(nextDraft) => {
-            setConfirmError("");
-            setDraft(nextDraft);
-            setView("review");
-          }}
-        />
-      ) : null}
-
-      {view === "review" && draft ? (
-        <ReviewImport
-          draft={draft}
-          onBack={() => {
-            setConfirmError("");
-            setView("import");
-          }}
-          onConfirm={(reviewed) => void confirmImport(reviewed)}
-          isConfirming={isConfirming}
-          confirmError={confirmError}
-        />
+        <ImportPanel onDraft={confirmImport} isImporting={isConfirming} externalError={confirmError} />
       ) : null}
 
       {view === "positions" ? (
