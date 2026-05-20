@@ -9,11 +9,12 @@ interface PositionListEditorProps {
   selectedListId?: string;
   onSelectList?: (listId: string) => void;
   onCreateList?: (name: string) => void | Promise<void>;
+  onDeleteList?: (list: PositionList) => void | Promise<void>;
   onSaveList?: (list: PositionList) => void | Promise<void>;
 }
 
 type CapacityMode = PositionDefinition["capacityMode"];
-type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
+type SaveState = "idle" | "dirty" | "saving" | "saved" | "deleting" | "deleted" | "error";
 
 function positionKeyFromLabel(label: string, existingKeys: Set<string>) {
   const baseKey =
@@ -45,7 +46,9 @@ function saveMessage(saveState: SaveState) {
   if (saveState === "dirty") return "Unsaved changes";
   if (saveState === "saving") return "Saving...";
   if (saveState === "saved") return "List saved.";
-  if (saveState === "error") return "Save failed. Try again.";
+  if (saveState === "deleting") return "Deleting...";
+  if (saveState === "deleted") return "List deleted.";
+  if (saveState === "error") return "Action failed. Try again.";
   return "";
 }
 
@@ -57,6 +60,7 @@ export function PositionListEditor({
   selectedListId = "",
   onSelectList,
   onCreateList,
+  onDeleteList,
   onSaveList
 }: PositionListEditorProps) {
   const selectedList = useMemo(
@@ -137,6 +141,22 @@ export function PositionListEditor({
       }
       setSaveState("saved");
       setIsEditing(false);
+    } catch {
+      setSaveState("error");
+    }
+  }
+
+  async function deleteList() {
+    if (!selectedList || !onDeleteList) return;
+
+    const shouldDelete = window.confirm(`Delete "${selectedList.name}"? This cannot be undone.`);
+    if (!shouldDelete) return;
+
+    setSaveState("deleting");
+    try {
+      await onDeleteList(selectedList);
+      setIsEditing(false);
+      setSaveState("deleted");
     } catch {
       setSaveState("error");
     }
@@ -223,9 +243,19 @@ export function PositionListEditor({
               <dd>{multipleCount}</dd>
             </div>
           </dl>
-          <button type="button" disabled={!selectedList} onClick={() => setIsEditing(true)}>
-            Edit list
-          </button>
+          <div className="position-list-editor__summary-actions">
+            <button type="button" disabled={!selectedList} onClick={() => setIsEditing(true)}>
+              Edit list
+            </button>
+            <button
+              type="button"
+              className="button-danger"
+              disabled={!selectedList || saveState === "deleting"}
+              onClick={() => void deleteList()}
+            >
+              Delete list
+            </button>
+          </div>
         </article>
       </div>
 
