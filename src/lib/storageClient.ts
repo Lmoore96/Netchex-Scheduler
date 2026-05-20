@@ -2,6 +2,11 @@ import type { ParsedScheduleDraft } from "../domain/types";
 import { parsedScheduleDraftSchema } from "../domain/validation";
 import { z } from "zod";
 
+const errorResponseSchema = z.object({
+  error: z.string(),
+  details: z.unknown().optional()
+});
+
 async function parseJsonResponse(response: Response) {
   const text = await response.text();
   let body: unknown = {};
@@ -15,16 +20,18 @@ async function parseJsonResponse(response: Response) {
   }
 
   if (!response.ok) {
-    const errorMessage = z.object({ error: z.string() }).safeParse(body);
-    throw new Error(errorMessage.success ? errorMessage.data.error : "Request failed");
+    const errorMessage = errorResponseSchema.safeParse(body);
+    if (!errorMessage.success) {
+      throw new Error("Request failed");
+    }
+
+    const details = errorMessage.data.details
+      ? ` Details: ${JSON.stringify(errorMessage.data.details)}`
+      : "";
+    throw new Error(`${errorMessage.data.error}${details}`);
   }
 
   return body;
-}
-
-function accessHeaders(): Record<string, string> {
-  const accessCode = globalThis.localStorage?.getItem("schedule-app-access-code");
-  return accessCode ? { "x-access-code": accessCode } : {};
 }
 
 export async function uploadSchedulePdf(file: File): Promise<ParsedScheduleDraft> {
@@ -32,8 +39,7 @@ export async function uploadSchedulePdf(file: File): Promise<ParsedScheduleDraft
     method: "POST",
     headers: {
       "content-type": "application/pdf",
-      "x-file-name": file.name,
-      ...accessHeaders()
+      "x-file-name": file.name
     },
     body: await file.arrayBuffer()
   });
@@ -48,7 +54,7 @@ const confirmImportResponseSchema = z.object({
 export async function confirmReviewedImport(draft: ParsedScheduleDraft): Promise<{ importId: string }> {
   const response = await fetch("/.netlify/functions/confirm-import", {
     method: "POST",
-    headers: { "content-type": "application/json", ...accessHeaders() },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(draft)
   });
 
