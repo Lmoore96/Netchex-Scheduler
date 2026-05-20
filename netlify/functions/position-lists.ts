@@ -20,6 +20,18 @@ function toPositionList(row: PositionListRow): PositionList {
   };
 }
 
+function errorDetails(caught: unknown) {
+  if (!(caught instanceof Error)) return caught;
+
+  return {
+    name: caught.name,
+    message: caught.message,
+    ...("code" in caught ? { code: caught.code } : {}),
+    ...("details" in caught ? { details: caught.details } : {}),
+    ...("hint" in caught ? { hint: caught.hint } : {})
+  };
+}
+
 export const handler: Handler = async (event) => {
   if (!isAccessAllowed(event)) {
     return accessDeniedResponse();
@@ -46,7 +58,7 @@ export const handler: Handler = async (event) => {
 
     const parsed = positionListRequestSchema.safeParse(body);
     if (!parsed.success) {
-      return errorResponse("Position list data is invalid", 400);
+      return errorResponse("Position list data is invalid", 400, { details: parsed.error.flatten() });
     }
 
     const positionList = await repository.savePositionList(
@@ -56,7 +68,9 @@ export const handler: Handler = async (event) => {
     );
 
     return jsonResponse({ positionList: toPositionList(positionList) });
-  } catch {
-    return errorResponse("Position lists could not be loaded or saved", 500);
+  } catch (caught) {
+    return errorResponse("Position lists could not be loaded or saved", 500, {
+      details: errorDetails(caught)
+    });
   }
 };
