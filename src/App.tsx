@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react";
 import { AssignmentBoard } from "./components/AssignmentBoard";
+import { DayDepartmentPicker } from "./components/DayDepartmentPicker";
 import { ImportPanel } from "./components/ImportPanel";
 import { PositionListEditor } from "./components/PositionListEditor";
 import { PrintView } from "./components/PrintView";
 import { ReviewImport } from "./components/ReviewImport";
 import { Shell } from "./components/Shell";
-import type { Assignment, ParsedScheduleDraft, PositionDefinition, Shift } from "./domain/types";
+import type { Assignment, ParsedScheduleDraft, PositionDefinition, PositionList, Shift } from "./domain/types";
 import { confirmReviewedImport } from "./lib/storageClient";
 
 type View = "import" | "review" | "positions" | "assign" | "print";
 
-const defaultPositions: PositionDefinition[] = [
+const starterPositions: PositionDefinition[] = [
   { key: "lead", label: "Lead", sortOrder: 0, capacityMode: "single" },
   { key: "starter", label: "Starter", sortOrder: 1, capacityMode: "multiple" }
 ];
@@ -32,20 +33,53 @@ function draftToShifts(draft: ParsedScheduleDraft, importId: string): Shift[] {
     }));
 }
 
+function uniqueSorted(values: string[]) {
+  return [...new Set(values)].sort();
+}
+
+function departmentIdFromName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "department";
+}
+
+function defaultListForDepartment(departmentName: string): PositionList {
+  const departmentId = departmentIdFromName(departmentName);
+  return {
+    id: `${departmentId}-default`,
+    departmentId,
+    name: "Default list",
+    positions: starterPositions
+  };
+}
+
 export function App() {
   const [view, setView] = useState<View>("import");
   const [draft, setDraft] = useState<ParsedScheduleDraft | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [positions, setPositions] = useState<PositionDefinition[]>(defaultPositions);
+  const [positionLists, setPositionLists] = useState<PositionList[]>([]);
+  const [selectedListIds, setSelectedListIds] = useState<Record<string, string>>({});
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState("");
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [confirmError, setConfirmError] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
 
-  const firstDepartment = shifts[0]?.departmentLabel ?? "Department";
-  const firstDate = shifts[0]?.shiftDate ?? new Date().toISOString().slice(0, 10);
+  const dates = useMemo(() => uniqueSorted(shifts.map((shift) => shift.shiftDate)), [shifts]);
+  const departments = useMemo(
+    () => uniqueSorted(shifts.map((shift) => shift.departmentLabel)).map((name) => ({ id: name, name })),
+    [shifts]
+  );
+
+  const currentDate = selectedDate || dates[0] || new Date().toISOString().slice(0, 10);
+  const currentDepartment = selectedDepartment || departments[0]?.id || "Department";
+  const currentDepartmentId = departmentIdFromName(currentDepartment);
+  const departmentLists = positionLists.filter((list) => list.departmentId === currentDepartmentId);
+  const selectedListId = selectedListIds[currentDepartmentId] || departmentLists[0]?.id || "";
+  const selectedList = departmentLists.find((list) => list.id === selectedListId) ?? departmentLists[0];
+  const selectedPositions = selectedList?.positions ?? starterPositions;
+
   const visibleShifts = useMemo(
-    () => shifts.filter((shift) => shift.departmentLabel === firstDepartment && shift.shiftDate === firstDate),
-    [firstDate, firstDepartment, shifts]
+    () => shifts.filter((shift) => shift.departmentLabel === currentDepartment && shift.shiftDate === currentDate),
+    [currentDate, currentDepartment, shifts]
   );
 
   async function confirmImport(reviewed: ParsedScheduleDraft) {
@@ -53,7 +87,16 @@ export function App() {
     setIsConfirming(true);
     try {
       const result = await confirmReviewedImport(reviewed);
-      setShifts(draftToShifts(reviewed, result.importId));
+      const nextShifts = draftToShifts(reviewed, result.importId);
+      const nextDepartments = uniqueSorted(nextShifts.map((shift) => shift.departmentLabel));
+      const nextDates = uniqueSorted(nextShifts.map((shift) => shift.shiftDate));
+      const defaultLists = nextDepartments.map(defaultListForDepartment);
+
+      setShifts(nextShifts);
+      setSelectedDate(nextDates[0] ?? "");
+      setSelectedDepartment(nextDepartments[0] ?? "");
+      setPositionLists(defaultLists);
+      setSelectedListIds(Object.fromEntries(defaultLists.map((list) => [list.departmentId, list.id])));
       setAssignments([]);
       setDraft(null);
       setView("positions");
@@ -62,6 +105,42 @@ export function App() {
     } finally {
       setIsConfirming(false);
     }
+  }
+
+  function savePositionList(nextList: PositionList) {
+    setPositionLists((currentLists) =>
+      currentLists.some((list) => list.id === nextList.id)
+        ? currentLists.map((list) => (list.id === nextList.id ? nextList : list))
+        : [...currentLists, nextList]
+    );
+    setSelectedListIds((current) => ({ ...current, [nextList.departmentId]: nextList.id }));
+  }
+
+  function createPositionList(name: string) {
+    const label = name.trim();
+    if (!label) return;
+
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "list";
+    const baseId = `${currentDepartmentId}-${slug}`;
+    const existingIds = new Set(positionLists.map((list) => list.id));
+    let id = baseId;
+    let suffix = 2;
+    while (existingIds.has(id)) {
+      id = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
+
+    savePositionList({ id, departmentId: currentDepartmentId, name: label, positions: [] });
+  }
+
+  function selectDepartment(department: string) {
+    setSelectedDepartment(department);
+    setAssignments([]);
+  }
+
+  function selectDate(date: string) {
+    setSelectedDate(date);
+    setAssignments([]);
   }
 
   return (
@@ -80,6 +159,19 @@ export function App() {
           Print
         </button>
       </nav>
+
+      {shifts.length > 0 && view !== "import" && view !== "review" ? (
+        <section className="panel no-print">
+          <DayDepartmentPicker
+            selectedDate={currentDate}
+            availableDates={dates}
+            departments={departments}
+            selectedDepartmentId={currentDepartment}
+            onDateChange={selectDate}
+            onDepartmentChange={selectDepartment}
+          />
+        </section>
+      ) : null}
 
       {view === "import" ? (
         <ImportPanel
@@ -106,18 +198,22 @@ export function App() {
 
       {view === "positions" ? (
         <PositionListEditor
-          departmentName={firstDepartment}
-          initialPositions={positions}
-          onSave={setPositions}
+          departmentName={currentDepartment}
+          positionLists={departmentLists}
+          selectedListId={selectedListId}
+          onSelectList={(listId) => setSelectedListIds((current) => ({ ...current, [currentDepartmentId]: listId }))}
+          onCreateList={createPositionList}
+          onSaveList={savePositionList}
         />
       ) : null}
 
       {view === "assign" ? (
         <section className="panel">
-          <h2>{firstDepartment} Assignments</h2>
-          <p>{firstDate}</p>
+          <h2>{currentDepartment} Assignments</h2>
+          <p>{currentDate}</p>
+          <p>Using list: {selectedList?.name ?? "Default list"}</p>
           <AssignmentBoard
-            positions={positions}
+            positions={selectedPositions}
             shifts={visibleShifts}
             assignments={assignments}
             onChange={setAssignments}
@@ -127,9 +223,9 @@ export function App() {
 
       {view === "print" ? (
         <PrintView
-          departmentName={firstDepartment}
-          date={firstDate}
-          positions={positions}
+          departmentName={currentDepartment}
+          date={currentDate}
+          positions={selectedPositions}
           shifts={visibleShifts}
           assignments={assignments}
         />
