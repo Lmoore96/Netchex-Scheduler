@@ -7,6 +7,10 @@ const errorResponseSchema = z.object({
   details: z.unknown().optional()
 });
 
+function compactBody(text: string): string {
+  return text.replace(/\s+/g, " ").trim().slice(0, 700);
+}
+
 async function parseJsonResponse(response: Response) {
   const text = await response.text();
   let body: unknown = {};
@@ -22,7 +26,10 @@ async function parseJsonResponse(response: Response) {
   if (!response.ok) {
     const errorMessage = errorResponseSchema.safeParse(body);
     if (!errorMessage.success) {
-      throw new Error("Request failed");
+      const rawBody = compactBody(text);
+      throw new Error(
+        `Request failed (${response.status} ${response.statusText})${rawBody ? `: ${rawBody}` : ""}`
+      );
     }
 
     const details = errorMessage.data.details
