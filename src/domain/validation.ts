@@ -30,7 +30,7 @@ export const positionDefinitionSchema = z.object({
 export const positionListRequestSchema = z.object({
   departmentId: z.string().trim().min(1).max(120),
   name: z.string().trim().min(1).max(120),
-  positions: z.array(positionDefinitionSchema).min(1).max(100)
+  positions: z.array(positionDefinitionSchema).max(100)
 }).superRefine((value, context) => {
   const keys = new Set<string>();
   const sortOrders = new Set<number>();
