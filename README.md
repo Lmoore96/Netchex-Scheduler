@@ -24,6 +24,5 @@ Required Netlify environment variables:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `SCHEDULE_APP_ACCESS_CODE`
 
 Apply `supabase/migrations/0001_initial_schema.sql` to the Supabase project before using the app against a real database.
