@@ -1,4 +1,5 @@
 import type { Assignment, PositionDefinition, Shift } from "../domain/types";
+import { formatShiftRange } from "../lib/time";
 
 interface PrintViewProps {
   departmentName: string;
@@ -17,7 +18,7 @@ function shiftFor(shifts: Shift[], shiftId: string) {
 }
 
 function shiftTime(shift: Shift) {
-  return `${shift.startTime}-${shift.endTime}`;
+  return formatShiftRange(shift.startTime, shift.endTime);
 }
 
 export function PrintView({ departmentName, date, positions, shifts, assignments }: PrintViewProps) {
