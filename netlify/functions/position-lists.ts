@@ -58,7 +58,10 @@ export const handler: Handler = async (event) => {
 
     const parsed = positionListRequestSchema.safeParse(body);
     if (!parsed.success) {
-      return errorResponse("Position list data is invalid", 400, { details: parsed.error.flatten() });
+      return jsonResponse(
+        { error: "Position list data is invalid", details: parsed.error.flatten() },
+        400
+      );
     }
 
     const positionList = await repository.savePositionList(
@@ -69,8 +72,9 @@ export const handler: Handler = async (event) => {
 
     return jsonResponse({ positionList: toPositionList(positionList) });
   } catch (caught) {
-    return errorResponse("Position lists could not be loaded or saved", 500, {
-      details: errorDetails(caught)
-    });
+    return jsonResponse(
+      { error: "Position lists could not be loaded or saved", details: errorDetails(caught) },
+      500
+    );
   }
 };
