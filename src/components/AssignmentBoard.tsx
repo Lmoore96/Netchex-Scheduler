@@ -1,4 +1,5 @@
 import type { Assignment, PositionDefinition, Shift } from "../domain/types";
+import { formatShiftRange } from "../lib/time";
 
 interface AssignmentBoardProps {
   positions: PositionDefinition[];
@@ -12,7 +13,7 @@ function sortedPositions(positions: PositionDefinition[]) {
 }
 
 function shiftLabel(shift: Shift) {
-  return `${shift.startTime}-${shift.endTime}`;
+  return formatShiftRange(shift.startTime, shift.endTime);
 }
 
 export function AssignmentBoard({
