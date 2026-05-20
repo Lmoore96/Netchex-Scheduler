@@ -35,13 +35,32 @@ export function createSupabaseRepository() {
     },
 
     async savePositionList(departmentId: string, name: string, positions: PositionDefinition[]) {
+      const { data: existingRows, error: findError } = await supabase
+        .from("position_lists")
+        .select("id")
+        .eq("department_id", departmentId)
+        .eq("name", name)
+        .limit(1);
+
+      if (findError) throw findError;
+
+      const existingId = existingRows?.[0]?.id;
+      if (existingId) {
+        const { data, error } = await supabase
+          .from("position_lists")
+          .update({ positions })
+          .eq("id", existingId)
+          .select("id, department_id, name, positions")
+          .single();
+
+        if (error) throw error;
+        return data;
+      }
+
       const { data, error } = await supabase
         .from("position_lists")
-        .upsert(
-          { department_id: departmentId, name, positions },
-          { onConflict: "department_id,name" }
-        )
-        .select()
+        .insert({ department_id: departmentId, name, positions })
+        .select("id, department_id, name, positions")
         .single();
 
       if (error) throw error;
