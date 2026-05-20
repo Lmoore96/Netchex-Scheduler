@@ -8,6 +8,7 @@ import { Shell } from "./components/Shell";
 import type { Assignment, ParsedScheduleDraft, PositionDefinition, PositionList, Shift } from "./domain/types";
 import {
   confirmReviewedImport,
+  deletePositionList as deletePositionListRequest,
   loadPositionLists,
   savePositionList as savePositionListRequest
 } from "./lib/storageClient";
@@ -192,6 +193,38 @@ export function App() {
     }
   }
 
+  async function deletePositionList(listToDelete: PositionList) {
+    setPositionListError("");
+
+    try {
+      await deletePositionListRequest(listToDelete.id);
+      setPositionLists((currentLists) =>
+        currentLists.filter((list) => !samePositionList(list, listToDelete))
+      );
+      setSelectedListIds((current) => {
+        const next = { ...current };
+        const remainingDepartmentList = positionLists.find(
+          (list) => list.departmentId === listToDelete.departmentId && !samePositionList(list, listToDelete)
+        );
+
+        if (remainingDepartmentList) {
+          next[listToDelete.departmentId] = remainingDepartmentList.id;
+        } else {
+          delete next[listToDelete.departmentId];
+        }
+
+        return next;
+      });
+    } catch (caught) {
+      const message =
+        caught instanceof Error
+          ? `Position list could not be deleted: ${caught.message}`
+          : "Position list could not be deleted.";
+      setPositionListError(message);
+      throw new Error(message);
+    }
+  }
+
   async function createPositionList(name: string) {
     const label = name.trim();
     if (!label) return;
@@ -281,6 +314,7 @@ export function App() {
             selectedListId={selectedListId}
             onSelectList={(listId) => setSelectedListIds((current) => ({ ...current, [currentDepartmentId]: listId }))}
             onCreateList={createPositionList}
+            onDeleteList={deletePositionList}
             onSaveList={savePositionList}
           />
         </>
