@@ -1,5 +1,5 @@
-import type { ParsedScheduleDraft } from "../domain/types";
-import { parsedScheduleDraftSchema } from "../domain/validation";
+import type { ParsedScheduleDraft, PositionList } from "../domain/types";
+import { parsedScheduleDraftSchema, positionDefinitionSchema } from "../domain/validation";
 import { z } from "zod";
 
 const errorResponseSchema = z.object({
@@ -66,4 +66,38 @@ export async function confirmReviewedImport(draft: ParsedScheduleDraft): Promise
   });
 
   return confirmImportResponseSchema.parse(await parseJsonResponse(response));
+}
+
+const positionListSchema = z.object({
+  id: z.string().min(1),
+  departmentId: z.string().min(1),
+  name: z.string().min(1),
+  positions: z.array(positionDefinitionSchema)
+});
+
+const positionListsResponseSchema = z.object({
+  positionLists: z.array(positionListSchema)
+});
+
+const positionListResponseSchema = z.object({
+  positionList: positionListSchema
+});
+
+export async function loadPositionLists(): Promise<PositionList[]> {
+  const response = await fetch("/.netlify/functions/position-lists");
+  return positionListsResponseSchema.parse(await parseJsonResponse(response)).positionLists;
+}
+
+export async function savePositionList(positionList: PositionList): Promise<PositionList> {
+  const response = await fetch("/.netlify/functions/position-lists", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      departmentId: positionList.departmentId,
+      name: positionList.name,
+      positions: positionList.positions
+    })
+  });
+
+  return positionListResponseSchema.parse(await parseJsonResponse(response)).positionList;
 }
