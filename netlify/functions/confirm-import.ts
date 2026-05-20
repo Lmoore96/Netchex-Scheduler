@@ -9,6 +9,21 @@ const confirmImportSchema = parsedScheduleDraftSchema.extend({
   warnings: z.array(z.string().max(500)).max(100)
 });
 
+function diagnosticError(caught: unknown) {
+  if (caught instanceof Error) {
+    return {
+      reason: caught.message,
+      name: caught.name
+    };
+  }
+
+  if (caught && typeof caught === "object") {
+    return caught;
+  }
+
+  return { reason: "Unknown confirmation error" };
+}
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return methodNotAllowedResponse();
@@ -27,14 +42,26 @@ export const handler: Handler = async (event) => {
 
   const parsed = confirmImportSchema.safeParse(body);
   if (!parsed.success) {
-    return errorResponse("Import review data is invalid", 400);
+    return jsonResponse(
+      {
+        error: "Import review data is invalid",
+        details: parsed.error.issues.map((issue) => ({ path: issue.path, message: issue.message }))
+      },
+      400
+    );
   }
 
   try {
     const repository = createSupabaseRepository();
     const importRow = await repository.confirmImport(parsed.data);
     return jsonResponse({ importId: importRow.id });
-  } catch {
-    return errorResponse("Import could not be confirmed", 500);
+  } catch (caught) {
+    return jsonResponse(
+      {
+        error: "Import could not be confirmed",
+        details: diagnosticError(caught)
+      },
+      500
+    );
   }
 };
