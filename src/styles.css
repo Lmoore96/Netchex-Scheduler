@@ -297,7 +297,9 @@ button:focus-visible {
 .assignment-board__moves label span,
 .position-list-editor__positions label span,
 .position-list-editor__list-tools label,
-.position-list-editor__form label {
+.position-list-editor__form label,
+.position-list-editor__summary-card span,
+.position-list-editor__summary-card dt {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
@@ -314,6 +316,7 @@ button:focus-visible {
   align-items: start;
   border-bottom: 1px solid var(--line);
   display: flex;
+  gap: 16px;
   justify-content: space-between;
   padding-bottom: 16px;
 }
@@ -330,8 +333,75 @@ button:focus-visible {
   margin: 5px 0 0;
 }
 
+.position-list-editor__status {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.position-list-editor__status--dirty {
+  background: #fff8e8;
+  border-color: #ecd39b;
+  color: var(--amber);
+}
+
+.position-list-editor__status--error {
+  background: #fff4f2;
+  border-color: #f2b8b0;
+  color: var(--danger);
+}
+
+.position-list-editor__summary {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 360px) minmax(0, 1fr);
+}
+
 .position-list-editor__list-tools {
   max-width: 360px;
+}
+
+.position-list-editor__summary-card {
+  align-items: center;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(160px, 1fr) auto auto;
+  padding: 14px;
+}
+
+.position-list-editor__summary-card strong {
+  display: block;
+  font-size: 18px;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+
+.position-list-editor__summary-card dl {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+}
+
+.position-list-editor__summary-card dl div {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 78px;
+  padding: 9px 10px;
+  text-align: center;
+}
+
+.position-list-editor__summary-card dd {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 2px 0 0;
+}
+
+.position-list-editor__editing {
+  display: grid;
+  gap: 14px;
 }
 
 .position-list-editor__form {
@@ -410,14 +480,14 @@ button:focus-visible {
   margin-top: 4px;
 }
 
-.actions button,
+.actions button:first-child,
 .position-list-editor__form button[type="submit"] {
   background: var(--teal);
   border-color: var(--teal);
   color: #ffffff;
 }
 
-.actions button:hover:not(:disabled),
+.actions button:first-child:hover:not(:disabled),
 .position-list-editor__form button[type="submit"]:hover:not(:disabled) {
   background: var(--teal-dark);
   border-color: var(--teal-dark);
@@ -577,7 +647,8 @@ button:focus-visible {
 @media (max-width: 760px) {
   .shell__header-inner,
   .section-heading,
-  .print-sheet__header {
+  .print-sheet__header,
+  .position-list-editor__header {
     align-items: start;
     flex-direction: column;
   }
@@ -602,11 +673,18 @@ button:focus-visible {
   }
 
   .day-department-picker,
+  .position-list-editor__summary,
+  .position-list-editor__summary-card,
   .position-list-editor__form,
   .position-list-editor__form:has(#new-position-list),
   .position-list-editor__positions li,
   .assignment-board__moves li {
     grid-template-columns: 1fr;
+  }
+
+  .position-list-editor__summary-card dl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .position-list-editor__form label,
