@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AssignmentBoard } from "./components/AssignmentBoard";
 import { DayDepartmentPicker } from "./components/DayDepartmentPicker";
 import { ImportPanel } from "./components/ImportPanel";
@@ -6,7 +6,11 @@ import { PositionListEditor } from "./components/PositionListEditor";
 import { PrintView } from "./components/PrintView";
 import { Shell } from "./components/Shell";
 import type { Assignment, ParsedScheduleDraft, PositionDefinition, PositionList, Shift } from "./domain/types";
-import { confirmReviewedImport } from "./lib/storageClient";
+import {
+  confirmReviewedImport,
+  loadPositionLists,
+  savePositionList as savePositionListRequest
+} from "./lib/storageClient";
 
 type View = "import" | "positions" | "assign" | "print";
 
@@ -50,6 +54,31 @@ function defaultListForDepartment(departmentName: string): PositionList {
   };
 }
 
+function withDefaultLists(lists: PositionList[], departmentNames: string[]) {
+  const nextLists = [...lists];
+
+  departmentNames.forEach((departmentName) => {
+    const departmentId = departmentIdFromName(departmentName);
+    if (!nextLists.some((list) => list.departmentId === departmentId)) {
+      nextLists.push(defaultListForDepartment(departmentName));
+    }
+  });
+
+  return nextLists;
+}
+
+function selectedListIdsForDepartments(lists: PositionList[], departmentNames: string[]) {
+  const nextSelectedListIds: Record<string, string> = {};
+
+  departmentNames.forEach((departmentName) => {
+    const departmentId = departmentIdFromName(departmentName);
+    const listId = lists.find((list) => list.departmentId === departmentId)?.id;
+    if (listId) nextSelectedListIds[departmentId] = listId;
+  });
+
+  return nextSelectedListIds;
+}
+
 export function App() {
   const [view, setView] = useState<View>("import");
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -59,7 +88,33 @@ export function App() {
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [confirmError, setConfirmError] = useState("");
+  const [positionListError, setPositionListError] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSavedLists() {
+      try {
+        const savedLists = await loadPositionLists();
+        if (isMounted) setPositionLists(savedLists);
+      } catch (caught) {
+        if (isMounted) {
+          setPositionListError(
+            caught instanceof Error
+              ? `Saved lists could not be loaded: ${caught.message}`
+              : "Saved lists could not be loaded."
+          );
+        }
+      }
+    }
+
+    void loadSavedLists();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const dates = useMemo(() => uniqueSorted(shifts.map((shift) => shift.shiftDate)), [shifts]);
   const departments = useMemo(
@@ -88,13 +143,13 @@ export function App() {
       const nextShifts = draftToShifts(reviewed, result.importId);
       const nextDepartments = uniqueSorted(nextShifts.map((shift) => shift.departmentLabel));
       const nextDates = uniqueSorted(nextShifts.map((shift) => shift.shiftDate));
-      const defaultLists = nextDepartments.map(defaultListForDepartment);
+      const nextPositionLists = withDefaultLists(positionLists, nextDepartments);
 
       setShifts(nextShifts);
       setSelectedDate(nextDates[0] ?? "");
       setSelectedDepartment(nextDepartments[0] ?? "");
-      setPositionLists(defaultLists);
-      setSelectedListIds(Object.fromEntries(defaultLists.map((list) => [list.departmentId, list.id])));
+      setPositionLists(nextPositionLists);
+      setSelectedListIds(selectedListIdsForDepartments(nextPositionLists, nextDepartments));
       setAssignments([]);
       setView("positions");
     } catch (caught) {
@@ -104,13 +159,28 @@ export function App() {
     }
   }
 
-  function savePositionList(nextList: PositionList) {
+  function applyPositionList(nextList: PositionList) {
     setPositionLists((currentLists) =>
       currentLists.some((list) => list.id === nextList.id)
         ? currentLists.map((list) => (list.id === nextList.id ? nextList : list))
         : [...currentLists, nextList]
     );
     setSelectedListIds((current) => ({ ...current, [nextList.departmentId]: nextList.id }));
+  }
+
+  function savePositionList(nextList: PositionList) {
+    setPositionListError("");
+    applyPositionList(nextList);
+
+    void savePositionListRequest(nextList)
+      .then(applyPositionList)
+      .catch((caught) => {
+        setPositionListError(
+          caught instanceof Error
+            ? `Position list could not be saved: ${caught.message}`
+            : "Position list could not be saved."
+        );
+      });
   }
 
   function createPositionList(name: string) {
@@ -175,14 +245,17 @@ export function App() {
       ) : null}
 
       {view === "positions" ? (
-        <PositionListEditor
-          departmentName={currentDepartment}
-          positionLists={departmentLists}
-          selectedListId={selectedListId}
-          onSelectList={(listId) => setSelectedListIds((current) => ({ ...current, [currentDepartmentId]: listId }))}
-          onCreateList={createPositionList}
-          onSaveList={savePositionList}
-        />
+        <>
+          {positionListError ? <p role="alert">{positionListError}</p> : null}
+          <PositionListEditor
+            departmentName={currentDepartment}
+            positionLists={departmentLists}
+            selectedListId={selectedListId}
+            onSelectList={(listId) => setSelectedListIds((current) => ({ ...current, [currentDepartmentId]: listId }))}
+            onCreateList={createPositionList}
+            onSaveList={savePositionList}
+          />
+        </>
       ) : null}
 
       {view === "assign" ? (
