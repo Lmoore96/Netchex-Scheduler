@@ -5,6 +5,7 @@ interface DepartmentOption {
 
 interface DayDepartmentPickerProps {
   selectedDate: string;
+  availableDates?: string[];
   departments: DepartmentOption[];
   selectedDepartmentId: string;
   onDateChange: (date: string) => void;
@@ -14,6 +15,7 @@ interface DayDepartmentPickerProps {
 
 export function DayDepartmentPicker({
   selectedDate,
+  availableDates = [],
   departments,
   selectedDepartmentId,
   onDateChange,
@@ -24,12 +26,26 @@ export function DayDepartmentPicker({
     <section className="day-department-picker" aria-label="Schedule filters">
       <label>
         <span>Day</span>
-        <input
-          type="date"
-          value={selectedDate}
-          disabled={disabled}
-          onChange={(event) => onDateChange(event.target.value)}
-        />
+        {availableDates.length > 0 ? (
+          <select
+            value={selectedDate}
+            disabled={disabled}
+            onChange={(event) => onDateChange(event.target.value)}
+          >
+            {availableDates.map((date) => (
+              <option key={date} value={date}>
+                {date}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="date"
+            value={selectedDate}
+            disabled={disabled}
+            onChange={(event) => onDateChange(event.target.value)}
+          />
+        )}
       </label>
 
       <label>
