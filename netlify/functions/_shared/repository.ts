@@ -23,6 +23,17 @@ export function createSupabaseRepository() {
       return { id: data };
     },
 
+    async listPositionLists() {
+      const { data, error } = await supabase
+        .from("position_lists")
+        .select("id, department_id, name, positions")
+        .order("department_id", { ascending: true })
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+      return data ?? [];
+    },
+
     async savePositionList(departmentId: string, name: string, positions: PositionDefinition[]) {
       const { data, error } = await supabase
         .from("position_lists")
