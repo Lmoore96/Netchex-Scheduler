@@ -67,6 +67,16 @@ export function createSupabaseRepository() {
       return data;
     },
 
+    async deletePositionList(id: string) {
+      const { error } = await supabase
+        .from("position_lists")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      return { deleted: true };
+    },
+
     async saveAssignments(
       dailyPositionPlanId: string,
       assignments: Array<Pick<Assignment, "shiftId" | "positionKey" | "sortOrder" | "notes">>
