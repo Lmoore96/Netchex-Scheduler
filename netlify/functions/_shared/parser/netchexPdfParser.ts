@@ -3,10 +3,7 @@ import { addDays, format, parse } from "date-fns";
 import type { ParsedScheduleDraft, ParsedShiftDraft } from "../../../../src/domain/types";
 import { normalizeDepartmentLabel } from "../../../../src/lib/department";
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "../../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
-  import.meta.url
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = "pdf.worker.mjs";
 
 interface TextItem {
   str: string;
