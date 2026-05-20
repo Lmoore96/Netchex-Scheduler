@@ -175,22 +175,24 @@ export function App() {
     setSelectedListIds((current) => ({ ...current, [nextList.departmentId]: nextList.id }));
   }
 
-  function savePositionList(nextList: PositionList) {
+  async function savePositionList(nextList: PositionList) {
     setPositionListError("");
     applyPositionList(nextList);
 
-    void savePositionListRequest(nextList)
-      .then(applyPositionList)
-      .catch((caught) => {
-        setPositionListError(
-          caught instanceof Error
-            ? `Position list could not be saved: ${caught.message}`
-            : "Position list could not be saved."
-        );
-      });
+    try {
+      const savedList = await savePositionListRequest(nextList);
+      applyPositionList(savedList);
+    } catch (caught) {
+      const message =
+        caught instanceof Error
+          ? `Position list could not be saved: ${caught.message}`
+          : "Position list could not be saved.";
+      setPositionListError(message);
+      throw new Error(message);
+    }
   }
 
-  function createPositionList(name: string) {
+  async function createPositionList(name: string) {
     const label = name.trim();
     if (!label) return;
 
@@ -204,7 +206,7 @@ export function App() {
       suffix += 1;
     }
 
-    savePositionList({ id, departmentId: currentDepartmentId, name: label, positions: [] });
+    await savePositionList({ id, departmentId: currentDepartmentId, name: label, positions: [] });
   }
 
   function selectDepartment(department: string) {
