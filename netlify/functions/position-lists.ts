@@ -1,7 +1,7 @@
 import type { Handler } from "@netlify/functions";
 import type { PositionList } from "../../src/domain/types";
 import { positionListRequestSchema } from "../../src/domain/validation";
-import { accessDeniedResponse, errorResponse, isAccessAllowed, jsonResponse, methodNotAllowedResponse } from "./_shared/http";
+import { accessDeniedResponse, errorResponse, isAccessAllowed, jsonResponse } from "./_shared/http";
 import { createSupabaseRepository } from "./_shared/repository";
 
 interface PositionListRow {
@@ -21,28 +21,34 @@ function toPositionList(row: PositionListRow): PositionList {
 }
 
 export const handler: Handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return methodNotAllowedResponse();
-  }
-
   if (!isAccessAllowed(event)) {
     return accessDeniedResponse();
   }
 
-  let body: unknown;
-  try {
-    body = JSON.parse(event.body ?? "{}");
-  } catch {
-    return errorResponse("Position list data must be valid JSON", 400);
-  }
-
-  const parsed = positionListRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return errorResponse("Position list data is invalid", 400);
-  }
-
   try {
     const repository = createSupabaseRepository();
+
+    if (event.httpMethod === "GET") {
+      const positionLists = await repository.listPositionLists();
+      return jsonResponse({ positionLists: positionLists.map(toPositionList) });
+    }
+
+    if (event.httpMethod !== "POST") {
+      return errorResponse("Method not allowed", 405, { Allow: "GET, POST" });
+    }
+
+    let body: unknown;
+    try {
+      body = JSON.parse(event.body ?? "{}");
+    } catch {
+      return errorResponse("Position list data must be valid JSON", 400);
+    }
+
+    const parsed = positionListRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse("Position list data is invalid", 400);
+    }
+
     const positionList = await repository.savePositionList(
       parsed.data.departmentId,
       parsed.data.name,
@@ -51,6 +57,6 @@ export const handler: Handler = async (event) => {
 
     return jsonResponse({ positionList: toPositionList(positionList) });
   } catch {
-    return errorResponse("Position list could not be saved", 500);
+    return errorResponse("Position lists could not be loaded or saved", 500);
   }
 };
