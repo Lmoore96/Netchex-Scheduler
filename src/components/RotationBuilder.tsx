@@ -167,6 +167,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
   const dates = useMemo(() => uniqueSorted(shifts.map((shift) => shift.shiftDate)), [shifts]);
   const [selectedDate, setSelectedDate] = useState("");
   const [assignments, setAssignments] = useState<Record<string, string>>({});
+  const [heldShiftIds, setHeldShiftIds] = useState<Record<string, boolean>>({});
   const [rotationTemplates, setRotationTemplates] = useState<RotationDefinition[]>(loadRotationTemplates);
   const [newPositionLabels, setNewPositionLabels] = useState<Record<string, string>>({});
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
@@ -195,6 +196,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
   const unassignedShifts = dateShifts.filter((shift) => !assignedShiftIds.has(shift.id));
   const specialCount = dateShifts.filter(isSpecialFacilitiesShift).length;
   const shallowCount = dateShifts.filter(isShallowShift).length;
+  const heldCount = dateShifts.filter((shift) => heldShiftIds[shift.id]).length;
 
   function selectDate(date: string) {
     setSelectedDate(date);
@@ -205,8 +207,28 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
     setAssignments((current) => ({ ...current, [key]: shiftId }));
   }
 
+  function toggleHeldShift(shiftId: string) {
+    const willHold = !heldShiftIds[shiftId];
+
+    setHeldShiftIds((current) => ({ ...current, [shiftId]: willHold }));
+    if (willHold) {
+      setAssignments((current) =>
+        Object.fromEntries(Object.entries(current).filter(([, assignedShiftId]) => assignedShiftId !== shiftId))
+      );
+    }
+  }
+
+  function clearDateHolds() {
+    const dateShiftIds = new Set(dateShifts.map((shift) => shift.id));
+    setHeldShiftIds((current) =>
+      Object.fromEntries(Object.entries(current).filter(([shiftId]) => !dateShiftIds.has(shiftId)))
+    );
+  }
+
   function autofillRotations() {
-    const availableShiftIds = new Set(dateShifts.map((shift) => shift.id));
+    const availableShiftIds = new Set(
+      dateShifts.filter((shift) => !heldShiftIds[shift.id]).map((shift) => shift.id)
+    );
     const nextAssignments: Record<string, string> = {};
 
     rotationTemplates.forEach((rotation) => {
@@ -353,8 +375,36 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
           <div className="rotation-builder__counts" aria-label="Scheduled lifeguard counts">
             <span>{specialCount} Special Facilities</span>
             <span>{shallowCount} Shallow</span>
+            <span>{heldCount} Held</span>
             <span>{unassignedShifts.length} On deck</span>
           </div>
+
+          <section className="rotation-builder__holds no-print">
+            <div className="rotation-builder__holds-header">
+              <div>
+                <h3>Hold from autofill</h3>
+                <p>Mark captains, supervisors, slide attendants, or anyone else you want to place manually.</p>
+              </div>
+              {heldCount > 0 ? (
+                <button type="button" onClick={clearDateHolds}>
+                  Clear holds
+                </button>
+              ) : null}
+            </div>
+            <div className="rotation-builder__hold-list">
+              {dateShifts.map((shift) => (
+                <label key={shift.id} className={heldShiftIds[shift.id] ? "is-held" : undefined}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(heldShiftIds[shift.id])}
+                    onChange={() => toggleHeldShift(shift.id)}
+                  />
+                  <span>{formatEmployeeName(shift.employeeName)}</span>
+                  <small>{shift.departmentLabel}</small>
+                </label>
+              ))}
+            </div>
+          </section>
 
           <div className="rotation-builder__grid">
             {rotationTemplates.map((rotation) => (
@@ -445,10 +495,11 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
             {unassignedShifts.length > 0 ? (
               <ul>
                 {unassignedShifts.map((shift) => (
-                  <li key={shift.id}>
+                  <li key={shift.id} className={heldShiftIds[shift.id] ? "is-held" : undefined}>
                     <strong>{formatEmployeeName(shift.employeeName)}</strong>
                     <span>{shift.departmentLabel}</span>
                     <span>{formatShiftRange(shift.startTime, shift.endTime)}</span>
+                    {heldShiftIds[shift.id] ? <span className="rotation-builder__held-badge">Held</span> : null}
                   </li>
                 ))}
               </ul>
