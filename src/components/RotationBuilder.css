@@ -45,7 +45,8 @@
 }
 
 .rotation-builder__toolbar span,
-.rotation-card__header span {
+.rotation-card__header span,
+.rotation-support__group label > span {
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
@@ -67,75 +68,6 @@
   font-size: 12px;
   font-weight: 800;
   padding: 5px 8px;
-}
-
-.rotation-builder__holds {
-  background: #f7f9f6;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-}
-
-.rotation-builder__holds-header {
-  align-items: start;
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-}
-
-.rotation-builder__holds h3 {
-  color: #172026;
-  font-size: 16px;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.rotation-builder__holds p {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 3px 0 0;
-}
-
-.rotation-builder__hold-list {
-  display: grid;
-  gap: 6px;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-}
-
-.rotation-builder__hold-list label {
-  align-items: center;
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  display: grid;
-  gap: 2px 7px;
-  grid-template-columns: auto minmax(0, 1fr);
-  padding: 7px 8px;
-}
-
-.rotation-builder__hold-list label.is-held {
-  background: #fff8e8;
-  border-color: #ecd39b;
-}
-
-.rotation-builder__hold-list input {
-  grid-row: span 2;
-  min-height: 0;
-}
-
-.rotation-builder__hold-list span {
-  font-size: 12px;
-  font-weight: 800;
-  overflow-wrap: anywhere;
-}
-
-.rotation-builder__hold-list small {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
 }
 
 .rotation-builder__grid {
@@ -245,8 +177,8 @@
   padding: 8px;
 }
 
-.rotation-builder__extras {
-  background: var(--surface-alt);
+.rotation-support {
+  background: #f7f9f6;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -254,6 +186,14 @@
   padding: 12px;
 }
 
+.rotation-support__header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.rotation-support h3,
 .rotation-builder__extras h3 {
   color: #172026;
   font-size: 17px;
@@ -261,9 +201,76 @@
   margin: 0;
 }
 
+.rotation-support p,
 .rotation-builder__extras p {
   color: var(--muted);
   margin: 3px 0 0;
+}
+
+.rotation-support.is-collapsed .rotation-support__body {
+  display: none;
+}
+
+.rotation-support__body {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+
+.rotation-support__group {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.rotation-support__group label {
+  display: grid;
+  gap: 5px;
+}
+
+.rotation-support__group ul {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rotation-support__group li {
+  align-items: center;
+  background: #f7f9f6;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 7px 8px;
+}
+
+.rotation-support__group li strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.rotation-support__group li span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.rotation-support__group li button {
+  grid-row: span 2;
+}
+
+.rotation-builder__extras {
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
 }
 
 .rotation-builder__extras ul {
@@ -284,11 +291,6 @@
   padding: 8px 9px;
 }
 
-.rotation-builder__extras li.is-held {
-  background: #fff8e8;
-  border-color: #ecd39b;
-}
-
 .rotation-builder__extras li strong {
   font-size: 13px;
   overflow-wrap: anywhere;
@@ -297,12 +299,6 @@
 .rotation-builder__extras li span {
   color: var(--muted);
   font-size: 12px;
-}
-
-.rotation-builder__held-badge {
-  color: var(--amber) !important;
-  font-weight: 900;
-  text-transform: uppercase;
 }
 
 @media (max-width: 1080px) {
@@ -314,23 +310,25 @@
 @media (max-width: 760px) {
   .rotation-builder__heading,
   .rotation-builder__toolbar,
-  .rotation-builder__holds-header,
   .rotation-card__header,
   .rotation-row,
   .rotation-row--editing,
-  .rotation-card__add {
+  .rotation-card__add,
+  .rotation-support__body {
     grid-template-columns: 1fr;
   }
 
   .rotation-builder__toolbar,
   .rotation-builder__toolbar label,
   .rotation-builder__toolbar button,
-  .rotation-row__edit-actions button {
+  .rotation-row__edit-actions button,
+  .rotation-support__header button {
     width: 100%;
   }
 
-  .rotation-builder__holds-header {
-    display: grid;
+  .rotation-support__header {
+    align-items: start;
+    flex-direction: column;
   }
 
   .rotation-row__edit-actions {
@@ -354,6 +352,7 @@
   }
 
   .rotation-card,
+  .rotation-support,
   .rotation-builder__extras {
     box-shadow: none;
     break-inside: avoid;
@@ -394,5 +393,16 @@
     min-width: 0;
     overflow-wrap: anywhere;
     text-align: center;
+  }
+
+  .rotation-support__body {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .rotation-support__group select,
+  .rotation-support__group label > span,
+  .rotation-support__header p,
+  .rotation-builder__extras p {
+    display: none;
   }
 }
