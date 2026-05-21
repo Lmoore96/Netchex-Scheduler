@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AssignmentBoard } from "./components/AssignmentBoard";
+import { CalloutManager } from "./components/CalloutManager";
 import { DayDepartmentPicker } from "./components/DayDepartmentPicker";
 import { ImportPanel } from "./components/ImportPanel";
 import { PositionListEditor } from "./components/PositionListEditor";
@@ -100,6 +101,7 @@ function selectedListIdsForDepartments(lists: PositionList[], departmentNames: s
 export function App() {
   const [view, setView] = useState<View>("import");
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [calloutShiftIds, setCalloutShiftIds] = useState<Record<string, boolean>>({});
   const [positionLists, setPositionLists] = useState<PositionList[]>([]);
   const [selectedListIds, setSelectedListIds] = useState<Record<string, string>>({});
   const [selectedDate, setSelectedDate] = useState("");
@@ -134,13 +136,17 @@ export function App() {
     };
   }, []);
 
+  const activeShifts = useMemo(
+    () => shifts.filter((shift) => !calloutShiftIds[shift.id]),
+    [calloutShiftIds, shifts]
+  );
   const positionShifts = useMemo(
-    () => shifts.filter((shift) => !isLifeguardRotationDepartment(shift.departmentLabel)),
-    [shifts]
+    () => activeShifts.filter((shift) => !isLifeguardRotationDepartment(shift.departmentLabel)),
+    [activeShifts]
   );
   const rotationShifts = useMemo(
-    () => shifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel)),
-    [shifts]
+    () => activeShifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel)),
+    [activeShifts]
   );
   const dates = useMemo(() => uniqueSorted(positionShifts.map((shift) => shift.shiftDate)), [positionShifts]);
   const departments = useMemo(
@@ -161,6 +167,11 @@ export function App() {
     [currentDate, currentDepartment, positionShifts]
   );
 
+  function toggleCallout(shiftId: string) {
+    setCalloutShiftIds((current) => ({ ...current, [shiftId]: !current[shiftId] }));
+    setAssignments((current) => current.filter((assignment) => assignment.shiftId !== shiftId));
+  }
+
   async function confirmImport(reviewed: ParsedScheduleDraft) {
     setConfirmError("");
     setIsConfirming(true);
@@ -174,6 +185,7 @@ export function App() {
       const nextPositionLists = withDefaultLists(positionLists, nextDepartments);
 
       setShifts(nextShifts);
+      setCalloutShiftIds({});
       setSelectedDate(nextDates[0] ?? "");
       setSelectedDepartment(nextDepartments[0] ?? "");
       setPositionLists(nextPositionLists);
@@ -318,6 +330,10 @@ export function App() {
           Print
         </button>
       </nav>
+
+      {shifts.length > 0 && view !== "import" ? (
+        <CalloutManager shifts={shifts} calloutShiftIds={calloutShiftIds} onToggleCallout={toggleCallout} />
+      ) : null}
 
       {positionShifts.length > 0 && view !== "import" && view !== "rotations" ? (
         <section className="panel panel--filters no-print">
