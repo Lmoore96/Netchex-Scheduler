@@ -6,20 +6,27 @@ import "./RotationBuilder.css";
 type RotationKind = "special" | "shallow";
 type RotationTone = "orange" | "cyan" | "green";
 
+interface RotationPosition {
+  id: string;
+  label: string;
+}
+
 interface RotationDefinition {
   id: string;
   title: string;
   subtitle: string;
   kind: RotationKind;
   tone: RotationTone;
-  positions: string[];
+  positions: RotationPosition[];
 }
 
 interface RotationBuilderProps {
   shifts: Shift[];
 }
 
-const rotations: RotationDefinition[] = [
+const storageKey = "lifeguard-rotation-templates-v1";
+
+const defaultRotations: RotationDefinition[] = [
   {
     id: "special-facilities",
     title: "Special Facilities",
@@ -27,16 +34,16 @@ const rotations: RotationDefinition[] = [
     kind: "special",
     tone: "orange",
     positions: [
-      "Top of Blaster",
-      "Top of Camille",
-      "Wave 3",
-      "Wave Beach",
-      "Break",
-      "Top of Racer",
-      "Top of Shipwreck",
-      "Top of Beacon",
-      "Wave 1",
-      "Break"
+      { id: "top-of-blaster", label: "Top of Blaster" },
+      { id: "top-of-camille", label: "Top of Camille" },
+      { id: "wave-3", label: "Wave 3" },
+      { id: "wave-beach", label: "Wave Beach" },
+      { id: "break-1", label: "Break" },
+      { id: "top-of-racer", label: "Top of Racer" },
+      { id: "top-of-shipwreck", label: "Top of Shipwreck" },
+      { id: "top-of-beacon", label: "Top of Beacon" },
+      { id: "wave-1", label: "Wave 1" },
+      { id: "break-2", label: "Break" }
     ]
   },
   {
@@ -46,18 +53,18 @@ const rotations: RotationDefinition[] = [
     kind: "shallow",
     tone: "cyan",
     positions: [
-      "Bottom of Blaster",
-      "Bottom of Camille",
-      "Splashpads by Blaster",
-      "Ground Queue Blaster",
-      "River 6",
-      "Break",
-      "Long Beach",
-      "River 7",
-      "River 8",
-      "Bottom of Shipwreck",
-      "Ground Queue Beacon",
-      "Break"
+      { id: "bottom-of-blaster", label: "Bottom of Blaster" },
+      { id: "bottom-of-camille", label: "Bottom of Camille" },
+      { id: "splashpads-by-blaster", label: "Splashpads by Blaster" },
+      { id: "ground-queue-blaster", label: "Ground Queue Blaster" },
+      { id: "river-6", label: "River 6" },
+      { id: "break-1", label: "Break" },
+      { id: "long-beach", label: "Long Beach" },
+      { id: "river-7", label: "River 7" },
+      { id: "river-8", label: "River 8" },
+      { id: "bottom-of-shipwreck", label: "Bottom of Shipwreck" },
+      { id: "ground-queue-beacon", label: "Ground Queue Beacon" },
+      { id: "break-2", label: "Break" }
     ]
   },
   {
@@ -67,18 +74,18 @@ const rotations: RotationDefinition[] = [
     kind: "shallow",
     tone: "green",
     positions: [
-      "Bottom of Racer",
-      "River 4",
-      "Ground Queue Racer",
-      "Kids Beach",
-      "River 3",
-      "Break",
-      "B. Beacon",
-      "Pads",
-      "River 5",
-      "River 2",
-      "River 1",
-      "Break"
+      { id: "bottom-of-racer", label: "Bottom of Racer" },
+      { id: "river-4", label: "River 4" },
+      { id: "ground-queue-racer", label: "Ground Queue Racer" },
+      { id: "kids-beach", label: "Kids Beach" },
+      { id: "river-3", label: "River 3" },
+      { id: "break-1", label: "Break" },
+      { id: "b-beacon", label: "B. Beacon" },
+      { id: "pads", label: "Pads" },
+      { id: "river-5", label: "River 5" },
+      { id: "river-2", label: "River 2" },
+      { id: "river-1", label: "River 1" },
+      { id: "break-2", label: "Break" }
     ]
   }
 ];
@@ -95,12 +102,29 @@ function isShallowShift(shift: Shift) {
   return shift.departmentLabel.toLowerCase().includes("shallow");
 }
 
-function assignmentKey(rotationId: string, positionIndex: number) {
-  return `${rotationId}:${positionIndex}`;
+function assignmentKey(rotationId: string, positionId: string) {
+  return `${rotationId}:${positionId}`;
+}
+
+function slugFromLabel(label: string) {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "position";
+}
+
+function formatEmployeeName(employeeName: string) {
+  const trimmed = employeeName.trim().replace(/\s+/g, " ");
+  const parts = trimmed.split(",");
+
+  if (parts.length > 1) {
+    const lastName = parts[0].trim();
+    const firstName = parts.slice(1).join(",").trim();
+    if (firstName && lastName) return `${firstName} ${lastName}`;
+  }
+
+  return trimmed;
 }
 
 function employeeOptionLabel(shift: Shift) {
-  return `${shift.employeeName} (${formatShiftRange(shift.startTime, shift.endTime)})`;
+  return formatEmployeeName(shift.employeeName);
 }
 
 function eligibleShifts(rotation: RotationDefinition, shifts: Shift[]) {
@@ -111,16 +135,42 @@ function eligibleShifts(rotation: RotationDefinition, shifts: Shift[]) {
   return shifts.filter((shift) => isSpecialFacilitiesShift(shift) || isShallowShift(shift));
 }
 
+function loadRotationTemplates() {
+  if (typeof window === "undefined") return defaultRotations;
+
+  try {
+    const saved = window.localStorage.getItem(storageKey);
+    if (!saved) return defaultRotations;
+
+    const parsed = JSON.parse(saved) as RotationDefinition[];
+    if (!Array.isArray(parsed)) return defaultRotations;
+    if (!parsed.every((rotation) => rotation.id && Array.isArray(rotation.positions))) return defaultRotations;
+
+    return parsed;
+  } catch {
+    return defaultRotations;
+  }
+}
+
 export function RotationBuilder({ shifts }: RotationBuilderProps) {
   const dates = useMemo(() => uniqueSorted(shifts.map((shift) => shift.shiftDate)), [shifts]);
   const [selectedDate, setSelectedDate] = useState("");
   const [assignments, setAssignments] = useState<Record<string, string>>({});
+  const [rotationTemplates, setRotationTemplates] = useState<RotationDefinition[]>(loadRotationTemplates);
+  const [newPositionLabels, setNewPositionLabels] = useState<Record<string, string>>({});
+  const [isEditingTemplate, setIsEditingTemplate] = useState(false);
 
   useEffect(() => {
     if (!selectedDate && dates[0]) {
       setSelectedDate(dates[0]);
     }
   }, [dates, selectedDate]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(storageKey, JSON.stringify(rotationTemplates));
+    }
+  }, [rotationTemplates]);
 
   const currentDate = selectedDate || dates[0] || "";
   const dateShifts = useMemo(
@@ -144,6 +194,82 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
     setAssignments((current) => ({ ...current, [key]: shiftId }));
   }
 
+  function updatePositionLabel(rotationId: string, positionId: string, label: string) {
+    setRotationTemplates((current) =>
+      current.map((rotation) =>
+        rotation.id === rotationId
+          ? {
+              ...rotation,
+              positions: rotation.positions.map((position) =>
+                position.id === positionId ? { ...position, label } : position
+              )
+            }
+          : rotation
+      )
+    );
+  }
+
+  function movePosition(rotationId: string, positionId: string, direction: -1 | 1) {
+    setRotationTemplates((current) =>
+      current.map((rotation) => {
+        if (rotation.id !== rotationId) return rotation;
+
+        const currentIndex = rotation.positions.findIndex((position) => position.id === positionId);
+        const nextIndex = currentIndex + direction;
+        if (currentIndex < 0 || nextIndex < 0 || nextIndex >= rotation.positions.length) return rotation;
+
+        const nextPositions = [...rotation.positions];
+        const [position] = nextPositions.splice(currentIndex, 1);
+        nextPositions.splice(nextIndex, 0, position);
+        return { ...rotation, positions: nextPositions };
+      })
+    );
+  }
+
+  function removePosition(rotationId: string, positionId: string) {
+    setRotationTemplates((current) =>
+      current.map((rotation) =>
+        rotation.id === rotationId
+          ? { ...rotation, positions: rotation.positions.filter((position) => position.id !== positionId) }
+          : rotation
+      )
+    );
+    setAssignments((current) => {
+      const next = { ...current };
+      delete next[assignmentKey(rotationId, positionId)];
+      return next;
+    });
+  }
+
+  function addPosition(rotationId: string) {
+    const label = (newPositionLabels[rotationId] || "").trim();
+    if (!label) return;
+
+    setRotationTemplates((current) =>
+      current.map((rotation) => {
+        if (rotation.id !== rotationId) return rotation;
+
+        const baseId = slugFromLabel(label);
+        const existingIds = new Set(rotation.positions.map((position) => position.id));
+        let id = baseId;
+        let suffix = 2;
+        while (existingIds.has(id)) {
+          id = `${baseId}-${suffix}`;
+          suffix += 1;
+        }
+
+        return { ...rotation, positions: [...rotation.positions, { id, label }] };
+      })
+    );
+    setNewPositionLabels((current) => ({ ...current, [rotationId]: "" }));
+  }
+
+  function resetRotations() {
+    setRotationTemplates(defaultRotations);
+    setAssignments({});
+    setNewPositionLabels({});
+  }
+
   return (
     <section className="panel rotation-builder">
       <div className="section-heading rotation-builder__heading">
@@ -162,6 +288,14 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
               ))}
             </select>
           </label>
+          <button type="button" onClick={() => setIsEditingTemplate((current) => !current)}>
+            {isEditingTemplate ? "Done editing" : "Edit rotations"}
+          </button>
+          {isEditingTemplate ? (
+            <button type="button" onClick={resetRotations}>
+              Reset default
+            </button>
+          ) : null}
           <button type="button" onClick={() => window.print()} disabled={dateShifts.length === 0}>
             Print rotations
           </button>
@@ -181,7 +315,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
           </div>
 
           <div className="rotation-builder__grid">
-            {rotations.map((rotation) => (
+            {rotationTemplates.map((rotation) => (
               <section key={rotation.id} className={`rotation-card rotation-card--${rotation.tone}`}>
                 <header className="rotation-card__header">
                   <div>
@@ -193,15 +327,42 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
 
                 <div className="rotation-card__rows">
                   {rotation.positions.map((position, index) => {
-                    const key = assignmentKey(rotation.id, index);
+                    const key = assignmentKey(rotation.id, position.id);
                     const currentShiftId = assignments[key] || "";
                     const options = eligibleShifts(rotation, dateShifts).filter(
                       (shift) => !assignedShiftIds.has(shift.id) || shift.id === currentShiftId
                     );
 
+                    if (isEditingTemplate) {
+                      return (
+                        <div key={key} className="rotation-row rotation-row--editing">
+                          <input
+                            aria-label={`Position name for ${rotation.title}`}
+                            value={position.label}
+                            onChange={(event) => updatePositionLabel(rotation.id, position.id, event.target.value)}
+                          />
+                          <div className="rotation-row__edit-actions">
+                            <button type="button" onClick={() => movePosition(rotation.id, position.id, -1)} disabled={index === 0}>
+                              Up
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => movePosition(rotation.id, position.id, 1)}
+                              disabled={index === rotation.positions.length - 1}
+                            >
+                              Down
+                            </button>
+                            <button type="button" className="button-danger" onClick={() => removePosition(rotation.id, position.id)}>
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <label key={key} className="rotation-row">
-                        <span className="rotation-row__position">{position}</span>
+                        <span className="rotation-row__position">{position.label}</span>
                         <select value={currentShiftId} onChange={(event) => selectAssignment(key, event.target.value)}>
                           <option value="">Open</option>
                           {options.map((shift) => (
@@ -214,6 +375,18 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
                     );
                   })}
                 </div>
+
+                {isEditingTemplate ? (
+                  <form className="rotation-card__add no-print" onSubmit={(event) => { event.preventDefault(); addPosition(rotation.id); }}>
+                    <input
+                      aria-label={`Add position to ${rotation.title}`}
+                      placeholder="Add position"
+                      value={newPositionLabels[rotation.id] || ""}
+                      onChange={(event) => setNewPositionLabels((current) => ({ ...current, [rotation.id]: event.target.value }))}
+                    />
+                    <button type="submit">Add</button>
+                  </form>
+                ) : null}
               </section>
             ))}
           </div>
@@ -227,7 +400,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
               <ul>
                 {unassignedShifts.map((shift) => (
                   <li key={shift.id}>
-                    <strong>{shift.employeeName}</strong>
+                    <strong>{formatEmployeeName(shift.employeeName)}</strong>
                     <span>{shift.departmentLabel}</span>
                     <span>{formatShiftRange(shift.startTime, shift.endTime)}</span>
                   </li>
