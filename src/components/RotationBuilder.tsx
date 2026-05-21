@@ -189,6 +189,18 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
     }
   }, [rotationTemplates]);
 
+  useEffect(() => {
+    const activeShiftIds = new Set(shifts.map((shift) => shift.id));
+
+    setAssignments((current) =>
+      Object.fromEntries(Object.entries(current).filter(([, shiftId]) => activeShiftIds.has(shiftId)))
+    );
+    setSupportAssignments((current) => ({
+      captains: current.captains.filter((shiftId) => activeShiftIds.has(shiftId)),
+      slideAttendants: current.slideAttendants.filter((shiftId) => activeShiftIds.has(shiftId))
+    }));
+  }, [shifts]);
+
   const currentDate = selectedDate || dates[0] || "";
   const dateShifts = useMemo(
     () => shifts.filter((shift) => shift.shiftDate === currentDate),
