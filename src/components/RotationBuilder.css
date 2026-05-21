@@ -1,6 +1,29 @@
 .rotation-builder {
   display: grid;
-  gap: 18px;
+  gap: 14px;
+}
+
+.rotation-builder select,
+.rotation-builder input {
+  font-size: 12px;
+  min-height: 32px;
+  padding: 5px 7px;
+}
+
+.rotation-builder button {
+  font-size: 12px;
+  min-height: 32px;
+  padding: 6px 9px;
+}
+
+.rotation-builder .button-danger {
+  border-color: #f2b8b0;
+  color: var(--danger);
+}
+
+.rotation-builder .button-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .rotation-builder__heading {
@@ -11,20 +34,20 @@
   align-items: end;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   justify-content: flex-end;
 }
 
 .rotation-builder__toolbar label {
   display: grid;
-  gap: 6px;
-  min-width: 160px;
+  gap: 4px;
+  min-width: 140px;
 }
 
 .rotation-builder__toolbar span,
 .rotation-card__header span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1.25;
   text-transform: uppercase;
@@ -33,7 +56,7 @@
 .rotation-builder__counts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .rotation-builder__counts span {
@@ -41,16 +64,16 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
-  padding: 7px 10px;
+  padding: 5px 8px;
 }
 
 .rotation-builder__grid {
   align-items: start;
   display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(230px, 1fr));
 }
 
 .rotation-card {
@@ -58,8 +81,8 @@
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 8px;
-  border-top: 7px solid var(--rotation-accent);
-  box-shadow: 0 12px 30px rgba(31, 41, 51, 0.07);
+  border-top: 6px solid var(--rotation-accent);
+  box-shadow: 0 10px 22px rgba(31, 41, 51, 0.06);
   min-width: 0;
   overflow: hidden;
 }
@@ -81,22 +104,23 @@
   background: #f7f9f6;
   border-bottom: 1px solid var(--line);
   display: grid;
-  gap: 10px;
+  gap: 8px;
   grid-template-columns: minmax(0, 1fr) auto;
-  padding: 13px;
+  padding: 9px 10px;
 }
 
 .rotation-card__header h3 {
   color: #172026;
-  font-size: 19px;
+  font-size: 16px;
   line-height: 1.15;
   margin: 0;
 }
 
 .rotation-card__header p {
   color: var(--muted);
+  font-size: 12px;
   font-weight: 800;
-  margin: 3px 0 0;
+  margin: 2px 0 0;
 }
 
 .rotation-card__rows {
@@ -107,23 +131,45 @@
   align-items: center;
   border-top: 1px solid var(--line);
   display: grid;
-  gap: 8px;
-  grid-template-columns: minmax(120px, 0.9fr) minmax(150px, 1.1fr);
-  padding: 10px 12px;
+  gap: 6px;
+  grid-template-columns: minmax(88px, 0.78fr) minmax(120px, 1fr);
+  padding: 6px 8px;
 }
 
 .rotation-row:first-child {
   border-top: 0;
 }
 
+.rotation-row--editing {
+  grid-template-columns: minmax(120px, 1fr) auto;
+}
+
 .rotation-row__position {
   color: #172026;
+  font-size: 12px;
   font-weight: 900;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
 .rotation-row select {
+  overflow: hidden;
+  text-overflow: ellipsis;
   width: 100%;
+}
+
+.rotation-row__edit-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.rotation-card__add {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 8px;
 }
 
 .rotation-builder__extras {
@@ -131,13 +177,13 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .rotation-builder__extras h3 {
   color: #172026;
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.25;
   margin: 0;
 }
@@ -149,8 +195,8 @@
 
 .rotation-builder__extras ul {
   display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   list-style: none;
   margin: 0;
   padding: 0;
@@ -161,13 +207,18 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
-  gap: 3px;
-  padding: 10px 11px;
+  gap: 2px;
+  padding: 8px 9px;
+}
+
+.rotation-builder__extras li strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .rotation-builder__extras li span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 @media (max-width: 1080px) {
@@ -180,14 +231,22 @@
   .rotation-builder__heading,
   .rotation-builder__toolbar,
   .rotation-card__header,
-  .rotation-row {
+  .rotation-row,
+  .rotation-row--editing,
+  .rotation-card__add {
     grid-template-columns: 1fr;
   }
 
   .rotation-builder__toolbar,
   .rotation-builder__toolbar label,
-  .rotation-builder__toolbar button {
+  .rotation-builder__toolbar button,
+  .rotation-row__edit-actions button {
     width: 100%;
+  }
+
+  .rotation-row__edit-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -195,11 +254,13 @@
   .rotation-builder {
     border: 0;
     box-shadow: none;
+    gap: 8px;
     margin: 0;
     padding: 0;
   }
 
   .rotation-builder__grid {
+    gap: 6px;
     grid-template-columns: repeat(3, 1fr);
   }
 
@@ -209,14 +270,28 @@
     break-inside: avoid;
   }
 
+  .rotation-card__header {
+    padding: 6px;
+  }
+
+  .rotation-card__header h3 {
+    font-size: 14px;
+  }
+
   .rotation-row {
-    grid-template-columns: minmax(110px, 0.9fr) minmax(120px, 1.1fr);
-    padding: 7px 8px;
+    gap: 4px;
+    grid-template-columns: minmax(80px, 0.85fr) minmax(90px, 1fr);
+    padding: 4px 5px;
+  }
+
+  .rotation-row__position,
+  .rotation-row select {
+    font-size: 10px;
   }
 
   .rotation-row select {
     border: 0;
-    min-height: 28px;
+    min-height: 22px;
     padding: 0;
   }
 }
