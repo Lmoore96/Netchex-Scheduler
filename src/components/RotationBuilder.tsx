@@ -135,6 +135,17 @@ function eligibleShifts(rotation: RotationDefinition, shifts: Shift[]) {
   return shifts.filter((shift) => isSpecialFacilitiesShift(shift) || isShallowShift(shift));
 }
 
+function shuffle<T>(items: T[]) {
+  const shuffled = [...items];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
 function loadRotationTemplates() {
   if (typeof window === "undefined") return defaultRotations;
 
@@ -192,6 +203,31 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
 
   function selectAssignment(key: string, shiftId: string) {
     setAssignments((current) => ({ ...current, [key]: shiftId }));
+  }
+
+  function autofillRotations() {
+    const availableShiftIds = new Set(dateShifts.map((shift) => shift.id));
+    const nextAssignments: Record<string, string> = {};
+
+    rotationTemplates.forEach((rotation) => {
+      rotation.positions.forEach((position) => {
+        const candidates = shuffle(
+          eligibleShifts(rotation, dateShifts).filter((shift) => availableShiftIds.has(shift.id))
+        );
+        const selectedShift = candidates[0];
+
+        if (selectedShift) {
+          nextAssignments[assignmentKey(rotation.id, position.id)] = selectedShift.id;
+          availableShiftIds.delete(selectedShift.id);
+        }
+      });
+    });
+
+    setAssignments(nextAssignments);
+  }
+
+  function clearAssignments() {
+    setAssignments({});
   }
 
   function updatePositionLabel(rotationId: string, positionId: string, label: string) {
@@ -288,6 +324,12 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
               ))}
             </select>
           </label>
+          <button type="button" onClick={autofillRotations} disabled={dateShifts.length === 0 || isEditingTemplate}>
+            Autofill
+          </button>
+          <button type="button" onClick={clearAssignments} disabled={Object.keys(assignments).length === 0 || isEditingTemplate}>
+            Clear
+          </button>
           <button type="button" onClick={() => setIsEditingTemplate((current) => !current)}>
             {isEditingTemplate ? "Done editing" : "Edit rotations"}
           </button>
@@ -329,6 +371,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
                   {rotation.positions.map((position, index) => {
                     const key = assignmentKey(rotation.id, position.id);
                     const currentShiftId = assignments[key] || "";
+                    const assignedShift = dateShifts.find((shift) => shift.id === currentShiftId);
                     const options = eligibleShifts(rotation, dateShifts).filter(
                       (shift) => !assignedShiftIds.has(shift.id) || shift.id === currentShiftId
                     );
@@ -371,6 +414,9 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
                             </option>
                           ))}
                         </select>
+                        <span className="rotation-row__print-name">
+                          {assignedShift ? formatEmployeeName(assignedShift.employeeName) : "Open"}
+                        </span>
                       </label>
                     );
                   })}
