@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Shift } from "../domain/types";
 import { formatShiftRange } from "../lib/time";
+import "./RotationBuilder.css";
 
 type RotationKind = "special" | "shallow";
 type RotationTone = "orange" | "cyan" | "green";
