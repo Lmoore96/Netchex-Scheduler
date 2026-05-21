@@ -4,6 +4,7 @@ import { DayDepartmentPicker } from "./components/DayDepartmentPicker";
 import { ImportPanel } from "./components/ImportPanel";
 import { PositionListEditor } from "./components/PositionListEditor";
 import { PrintView } from "./components/PrintView";
+import { RotationBuilder } from "./components/RotationBuilder";
 import { Shell } from "./components/Shell";
 import type { Assignment, ParsedScheduleDraft, PositionDefinition, PositionList, Shift } from "./domain/types";
 import {
@@ -13,7 +14,7 @@ import {
   savePositionList as savePositionListRequest
 } from "./lib/storageClient";
 
-type View = "import" | "positions" | "assign" | "print";
+type View = "import" | "positions" | "assign" | "print" | "rotations";
 
 const starterPositions: PositionDefinition[] = [
   { key: "lead", label: "Lead", sortOrder: 0, capacityMode: "single" },
@@ -43,6 +44,11 @@ function uniqueSorted(values: string[]) {
 
 function departmentIdFromName(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "department";
+}
+
+function isLifeguardRotationDepartment(departmentName: string) {
+  const normalized = departmentName.toLowerCase();
+  return normalized.includes("shallow") || normalized.includes("special facilit");
 }
 
 function defaultListForDepartment(departmentName: string): PositionList {
@@ -128,10 +134,18 @@ export function App() {
     };
   }, []);
 
-  const dates = useMemo(() => uniqueSorted(shifts.map((shift) => shift.shiftDate)), [shifts]);
-  const departments = useMemo(
-    () => uniqueSorted(shifts.map((shift) => shift.departmentLabel)).map((name) => ({ id: name, name })),
+  const positionShifts = useMemo(
+    () => shifts.filter((shift) => !isLifeguardRotationDepartment(shift.departmentLabel)),
     [shifts]
+  );
+  const rotationShifts = useMemo(
+    () => shifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel)),
+    [shifts]
+  );
+  const dates = useMemo(() => uniqueSorted(positionShifts.map((shift) => shift.shiftDate)), [positionShifts]);
+  const departments = useMemo(
+    () => uniqueSorted(positionShifts.map((shift) => shift.departmentLabel)).map((name) => ({ id: name, name })),
+    [positionShifts]
   );
 
   const currentDate = selectedDate || dates[0] || new Date().toISOString().slice(0, 10);
@@ -143,8 +157,8 @@ export function App() {
   const selectedPositions = selectedList?.positions ?? starterPositions;
 
   const visibleShifts = useMemo(
-    () => shifts.filter((shift) => shift.departmentLabel === currentDepartment && shift.shiftDate === currentDate),
-    [currentDate, currentDepartment, shifts]
+    () => positionShifts.filter((shift) => shift.departmentLabel === currentDepartment && shift.shiftDate === currentDate),
+    [currentDate, currentDepartment, positionShifts]
   );
 
   async function confirmImport(reviewed: ParsedScheduleDraft) {
@@ -153,8 +167,10 @@ export function App() {
     try {
       const result = await confirmReviewedImport(reviewed);
       const nextShifts = draftToShifts(reviewed, result.importId);
-      const nextDepartments = uniqueSorted(nextShifts.map((shift) => shift.departmentLabel));
-      const nextDates = uniqueSorted(nextShifts.map((shift) => shift.shiftDate));
+      const nextPositionShifts = nextShifts.filter((shift) => !isLifeguardRotationDepartment(shift.departmentLabel));
+      const nextRotationShifts = nextShifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel));
+      const nextDepartments = uniqueSorted(nextPositionShifts.map((shift) => shift.departmentLabel));
+      const nextDates = uniqueSorted(nextPositionShifts.map((shift) => shift.shiftDate));
       const nextPositionLists = withDefaultLists(positionLists, nextDepartments);
 
       setShifts(nextShifts);
@@ -163,7 +179,7 @@ export function App() {
       setPositionLists(nextPositionLists);
       setSelectedListIds(selectedListIdsForDepartments(nextPositionLists, nextDepartments));
       setAssignments([]);
-      setView("positions");
+      setView(nextDepartments.length > 0 ? "positions" : nextRotationShifts.length > 0 ? "rotations" : "import");
     } catch (caught) {
       setConfirmError(caught instanceof Error ? caught.message : "Import could not be confirmed");
     } finally {
@@ -273,7 +289,7 @@ export function App() {
           type="button"
           className={view === "positions" ? "is-active" : undefined}
           onClick={() => setView("positions")}
-          disabled={shifts.length === 0}
+          disabled={positionShifts.length === 0}
         >
           Positions
         </button>
@@ -281,21 +297,29 @@ export function App() {
           type="button"
           className={view === "assign" ? "is-active" : undefined}
           onClick={() => setView("assign")}
-          disabled={shifts.length === 0}
+          disabled={positionShifts.length === 0}
         >
           Assign
         </button>
         <button
           type="button"
+          className={view === "rotations" ? "is-active" : undefined}
+          onClick={() => setView("rotations")}
+          disabled={rotationShifts.length === 0}
+        >
+          Rotations
+        </button>
+        <button
+          type="button"
           className={view === "print" ? "is-active" : undefined}
           onClick={() => setView("print")}
-          disabled={shifts.length === 0}
+          disabled={positionShifts.length === 0}
         >
           Print
         </button>
       </nav>
 
-      {shifts.length > 0 && view !== "import" ? (
+      {positionShifts.length > 0 && view !== "import" && view !== "rotations" ? (
         <section className="panel panel--filters no-print">
           <DayDepartmentPicker
             selectedDate={currentDate}
@@ -344,6 +368,8 @@ export function App() {
           />
         </section>
       ) : null}
+
+      {view === "rotations" ? <RotationBuilder shifts={rotationShifts} /> : null}
 
       {view === "print" ? (
         <PrintView
