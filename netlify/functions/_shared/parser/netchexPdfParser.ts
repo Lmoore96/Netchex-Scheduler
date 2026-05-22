@@ -3,8 +3,6 @@ import { addDays, format, parse } from "date-fns";
 import type { ParsedScheduleDraft, ParsedShiftDraft } from "../../../../src/domain/types";
 import { normalizeDepartmentLabel } from "../../../../src/lib/department";
 
-pdfjs.GlobalWorkerOptions.workerSrc = "../../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs";
-
 interface TextItem {
   str: string;
   transform: number[];
@@ -78,6 +76,22 @@ function sortTextItems(items: PositionedTextItem[]): PositionedTextItem[] {
   });
 }
 
+function extractedPdfText(items: PositionedTextItem[]): string {
+  return items
+    .map((item) => item.str)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function looksLikeAppPrintout(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return (
+    normalized.includes("lifeguard rotations") ||
+    (normalized.includes("schedule positions") && normalized.includes("netchex-scheduler.netlify.app"))
+  );
+}
+
 function isoDate(year: string, month: string, day: string): string {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
@@ -129,8 +143,8 @@ function inferRangeFromDayHeaders(items: PositionedTextItem[], text: string): { 
 
   const startDay = dayNumbers[0];
   const endDay = dayNumbers.at(-1) ?? startDay;
-  const startDate = new Date(Date.UTC(Number(year), Number(month) - 1, startDay));
-  const endDate = new Date(Date.UTC(Number(year), Number(month) - 1 + (endDay < startDay ? 1 : 0), endDay));
+  const startDate = new Date(Number(year), Number(month) - 1, startDay);
+  const endDate = new Date(Number(year), Number(month) - 1 + (endDay < startDay ? 1 : 0), endDay);
 
   return {
     start: format(startDate, "yyyy-MM-dd"),
@@ -181,7 +195,7 @@ function buildDayColumns(items: PositionedTextItem[], rangeStart: string): DayCo
 
     for (let offset = 0; offset < 7; offset += 1) {
       const candidate = addDays(startDate, offset);
-      if (candidate.getUTCDate() === match.dayNumber) {
+      if (candidate.getDate() === match.dayNumber) {
         columns.push({
           shortDay: match.shortDay,
           date: format(candidate, "yyyy-MM-dd"),
@@ -307,8 +321,9 @@ export async function parseNetchexPdf(
 ): Promise<ParsedScheduleDraft> {
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(buffer),
-    useWorkerFetch: false
-  });
+    useWorkerFetch: false,
+    disableWorker: true
+  } as unknown as Parameters<typeof pdfjs.getDocument>[0]);
   const items: PositionedTextItem[] = [];
 
   const warnings: string[] = [];
@@ -333,6 +348,11 @@ export async function parseNetchexPdf(
     }
 
     const sortedItems = sortTextItems(items);
+    const pdfText = extractedPdfText(sortedItems);
+    if (looksLikeAppPrintout(pdfText)) {
+      throw new Error("This looks like a PDF printed from this app. Upload the original Netchex Scheduler PDF/export instead.");
+    }
+
     const range = deriveDateRange(sortedItems);
     if (!range) {
       return {
