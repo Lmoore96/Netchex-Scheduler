@@ -30,10 +30,13 @@ interface DayColumn {
   x: number;
 }
 
-const dayHeaderPattern = /^(\d{1,2})\s+(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/;
+const dayNamePattern = "Mon(?:day)?|Tue(?:sday)?|Wed(?:nesday)?|Thu(?:rsday)?|Fri(?:day)?|Sat(?:urday)?|Sun(?:day)?";
+const dayHeaderPattern = new RegExp(`^(?:(\\d{1,2})\\s+(${dayNamePattern})|(${dayNamePattern})\\s+(\\d{1,2}))$`, "i");
 const timePattern = /^(\d{1,2}:\d{2})(AM|PM)$/i;
 const footerPattern = /^https?:|^Page\s+\d+\s+of\s+\d+$/i;
 const headerMetadataPattern = /^(Netchex Scheduler|\d{1,2}\/\d{1,2}\/\d{2},?\s*\d{0,2}|:|\d{2}|AM|PM)$/i;
+const monthNamePattern = "Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?";
+const rangeSeparatorPattern = "(?:-|–|—|to)";
 const monthNumbers: Record<string, string> = {
   jan: "01",
   january: "01",
@@ -79,38 +82,93 @@ function isoDate(year: string, month: string, day: string): string {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
+function normalizeYear(year: string): string {
+  return year.length === 2 ? `20${year}` : year;
+}
+
+function normalizeDateSearchText(text: string): string {
+  return text
+    .replace(/\s*\/\s*/g, "/")
+    .replace(/\s*(?:-|–|—)\s*/g, " - ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function monthNumber(monthName: string | undefined): string | undefined {
+  return monthName ? monthNumbers[monthName.toLowerCase()] : undefined;
+}
+
+function dayHeaderMatch(value: string): { dayNumber: number; shortDay: string } | undefined {
+  const match = value.match(dayHeaderPattern);
+  if (!match) return undefined;
+
+  const dayNumber = Number(match[1] ?? match[4]);
+  const dayName = match[2] ?? match[3];
+  if (!Number.isInteger(dayNumber)) return undefined;
+
+  return { dayNumber, shortDay: dayName.slice(0, 3) };
+}
+
+function inferRangeFromDayHeaders(items: PositionedTextItem[], text: string): { start: string; end: string } | undefined {
+  const monthYearMatch = text.match(new RegExp(`\\b(${monthNamePattern})\\b(?:\\s+\\d{1,2},?)?\\s+(20\\d{2})\\b`, "i"));
+  if (!monthYearMatch) return undefined;
+
+  const month = monthNumber(monthYearMatch[1]);
+  const year = monthYearMatch[2];
+  if (!month || !year) return undefined;
+
+  const headers = items
+    .map((item) => ({ item, header: dayHeaderMatch(item.str) }))
+    .filter((entry): entry is { item: PositionedTextItem; header: { dayNumber: number; shortDay: string } } => Boolean(entry.header))
+    .sort((a, b) => {
+      if (a.item.pageNumber !== b.item.pageNumber) return a.item.pageNumber - b.item.pageNumber;
+      return a.item.x - b.item.x;
+    });
+  const dayNumbers = [...new Set(headers.map((entry) => entry.header.dayNumber))];
+  if (dayNumbers.length < 2) return undefined;
+
+  const startDay = dayNumbers[0];
+  const endDay = dayNumbers.at(-1) ?? startDay;
+  const startDate = new Date(Date.UTC(Number(year), Number(month) - 1, startDay));
+  const endDate = new Date(Date.UTC(Number(year), Number(month) - 1 + (endDay < startDay ? 1 : 0), endDay));
+
+  return {
+    start: format(startDate, "yyyy-MM-dd"),
+    end: format(endDate, "yyyy-MM-dd")
+  };
+}
+
 function deriveDateRange(items: PositionedTextItem[]): { start: string; end: string } | undefined {
-  const text = items.map((item) => item.str).join(" ");
+  const text = normalizeDateSearchText(items.map((item) => item.str).join(" "));
 
   const numericMatch = text.match(
-    /(\d{2})\/(\d{2})\/(\d{2})\s*-\s*(\d{2})\/(\d{2})\/(\d{2})/
+    new RegExp(`(\\d{1,2})/(\\d{1,2})/(\\d{2}|\\d{4})\\s*${rangeSeparatorPattern}\\s*(\\d{1,2})/(\\d{1,2})/(\\d{2}|\\d{4})`, "i")
   );
   if (numericMatch) {
     const [, startMonth, startDay, startYear, endMonth, endDay, endYear] = numericMatch;
     return {
-      start: isoDate(`20${startYear}`, startMonth, startDay),
-      end: isoDate(`20${endYear}`, endMonth, endDay)
+      start: isoDate(normalizeYear(startYear), startMonth, startDay),
+      end: isoDate(normalizeYear(endYear), endMonth, endDay)
     };
   }
 
   const namedMatch = text.match(
-    /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})\s*-\s*(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+)?(\d{1,2}),?\s*(20\d{2})\b/i
+    new RegExp(`\\b(${monthNamePattern})\\s+(\\d{1,2})(?:,?\\s*(20\\d{2}))?\\s*${rangeSeparatorPattern}\\s*(?:(${monthNamePattern})\\s+)?(\\d{1,2})(?:,?\\s*(20\\d{2}))?\\b`, "i")
   );
-  if (!namedMatch) {
-    return undefined;
+  if (namedMatch) {
+    const [, startMonthName, startDay, startYear, endMonthName, endDay, endYear] = namedMatch;
+    const year = endYear ?? startYear;
+    const startMonth = monthNumber(startMonthName);
+    const endMonth = monthNumber(endMonthName ?? startMonthName);
+    if (year && startMonth && endMonth) {
+      return {
+        start: isoDate(year, startMonth, startDay),
+        end: isoDate(year, endMonth, endDay)
+      };
+    }
   }
 
-  const [, startMonthName, startDay, endMonthName, endDay, year] = namedMatch;
-  const startMonth = monthNumbers[startMonthName.toLowerCase()];
-  const endMonth = monthNumbers[(endMonthName ?? startMonthName).toLowerCase()];
-  if (!startMonth || !endMonth) {
-    return undefined;
-  }
-
-  return {
-    start: isoDate(year, startMonth, startDay),
-    end: isoDate(year, endMonth, endDay)
-  };
+  return inferRangeFromDayHeaders(items, text);
 }
 
 function buildDayColumns(items: PositionedTextItem[], rangeStart: string): DayColumn[] {
@@ -118,15 +176,14 @@ function buildDayColumns(items: PositionedTextItem[], rangeStart: string): DayCo
   const columns: DayColumn[] = [];
 
   for (const item of items) {
-    const match = item.str.match(dayHeaderPattern);
+    const match = dayHeaderMatch(item.str);
     if (!match) continue;
 
-    const dayNumber = Number(match[1]);
     for (let offset = 0; offset < 7; offset += 1) {
       const candidate = addDays(startDate, offset);
-      if (candidate.getUTCDate() === dayNumber) {
+      if (candidate.getUTCDate() === match.dayNumber) {
         columns.push({
-          shortDay: match[2],
+          shortDay: match.shortDay,
           date: format(candidate, "yyyy-MM-dd"),
           x: item.x
         });
