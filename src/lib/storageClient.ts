@@ -1,4 +1,4 @@
-import type { ParsedScheduleDraft, PositionList } from "../domain/types";
+import type { LoadedSchedule, ParsedScheduleDraft, PositionList, SavedScheduleSummary } from "../domain/types";
 import { parsedScheduleDraftSchema, positionDefinitionSchema } from "../domain/validation";
 import { z } from "zod";
 
@@ -87,6 +87,44 @@ const deletePositionListResponseSchema = z.object({
   deleted: z.boolean()
 });
 
+const savedScheduleSummarySchema = z.object({
+  id: z.string().min(1),
+  sourceFileName: z.string().min(1),
+  dateRangeStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dateRangeEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  importedAt: z.string().min(1),
+  shiftCount: z.number().int().min(0)
+});
+
+const savedSchedulesResponseSchema = z.object({
+  schedules: z.array(savedScheduleSummarySchema)
+});
+
+const loadedShiftSchema = z.object({
+  id: z.string().min(1),
+  scheduleImportId: z.string().min(1),
+  employeeId: z.string().min(1),
+  employeeName: z.string().min(1),
+  shiftDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  departmentLabel: z.string().min(1),
+  normalizedDepartmentId: z.string().optional(),
+  sourceConfidence: z.enum(["high", "medium", "low"]),
+  sourceNotes: z.string().optional()
+});
+
+const loadedScheduleResponseSchema = z.object({
+  schedule: z.object({
+    importId: z.string().min(1),
+    sourceFileName: z.string().min(1),
+    dateRangeStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    dateRangeEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    shifts: z.array(loadedShiftSchema),
+    warnings: z.array(z.string())
+  })
+});
+
 export async function loadPositionLists(): Promise<PositionList[]> {
   const response = await fetch("/.netlify/functions/position-lists");
   return positionListsResponseSchema.parse(await parseJsonResponse(response)).positionLists;
@@ -112,4 +150,14 @@ export async function deletePositionList(id: string): Promise<void> {
   });
 
   deletePositionListResponseSchema.parse(await parseJsonResponse(response));
+}
+
+export async function listSavedSchedules(): Promise<SavedScheduleSummary[]> {
+  const response = await fetch("/.netlify/functions/saved-schedules");
+  return savedSchedulesResponseSchema.parse(await parseJsonResponse(response)).schedules;
+}
+
+export async function loadSavedSchedule(scheduleImportId: string): Promise<LoadedSchedule> {
+  const response = await fetch(`/.netlify/functions/saved-schedules?id=${encodeURIComponent(scheduleImportId)}`);
+  return loadedScheduleResponseSchema.parse(await parseJsonResponse(response)).schedule;
 }

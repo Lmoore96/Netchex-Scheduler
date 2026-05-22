@@ -23,6 +23,21 @@ export function createSupabaseRepository() {
       return { id: data };
     },
 
+    async listSavedSchedules() {
+      const { data, error } = await supabase.rpc("list_saved_schedule_imports");
+
+      if (error) throw error;
+      return data ?? [];
+    },
+
+    async loadSavedSchedule(importId: string) {
+      const { data, error } = await supabase.rpc("load_saved_schedule_import", { import_id: importId });
+
+      if (error) throw error;
+      if (!data) throw new Error("Saved schedule was not found");
+      return data;
+    },
+
     async listPositionLists() {
       const { data, error } = await supabase
         .from("position_lists")

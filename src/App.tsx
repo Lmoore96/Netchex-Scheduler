@@ -7,11 +7,13 @@ import { PositionListEditor } from "./components/PositionListEditor";
 import { PrintView } from "./components/PrintView";
 import { RotationBuilder } from "./components/RotationBuilder";
 import { Shell } from "./components/Shell";
-import type { Assignment, ParsedScheduleDraft, PositionDefinition, PositionList, Shift } from "./domain/types";
+import type { Assignment, ParsedScheduleDraft, PositionDefinition, PositionList, SavedScheduleSummary, Shift } from "./domain/types";
 import {
   confirmReviewedImport,
   deletePositionList as deletePositionListRequest,
+  listSavedSchedules as listSavedSchedulesRequest,
   loadPositionLists,
+  loadSavedSchedule as loadSavedScheduleRequest,
   savePositionList as savePositionListRequest
 } from "./lib/storageClient";
 
@@ -110,6 +112,10 @@ export function App() {
   const [confirmError, setConfirmError] = useState("");
   const [positionListError, setPositionListError] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
+  const [savedSchedules, setSavedSchedules] = useState<SavedScheduleSummary[]>([]);
+  const [savedScheduleError, setSavedScheduleError] = useState("");
+  const [isLoadingSavedSchedules, setIsLoadingSavedSchedules] = useState(false);
+  const [isLoadingSavedSchedule, setIsLoadingSavedSchedule] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -172,30 +178,58 @@ export function App() {
     setAssignments((current) => current.filter((assignment) => assignment.shiftId !== shiftId));
   }
 
+  function loadShiftsIntoWorkspace(nextShifts: Shift[]) {
+    const nextPositionShifts = nextShifts.filter((shift) => !isLifeguardRotationDepartment(shift.departmentLabel));
+    const nextRotationShifts = nextShifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel));
+    const nextDepartments = uniqueSorted(nextPositionShifts.map((shift) => shift.departmentLabel));
+    const nextDates = uniqueSorted(nextPositionShifts.map((shift) => shift.shiftDate));
+    const nextPositionLists = withDefaultLists(positionLists, nextDepartments);
+
+    setShifts(nextShifts);
+    setCalloutShiftIds({});
+    setSelectedDate(nextDates[0] ?? "");
+    setSelectedDepartment(nextDepartments[0] ?? "");
+    setPositionLists(nextPositionLists);
+    setSelectedListIds(selectedListIdsForDepartments(nextPositionLists, nextDepartments));
+    setAssignments([]);
+    setView(nextDepartments.length > 0 ? "positions" : nextRotationShifts.length > 0 ? "rotations" : "import");
+  }
+
   async function confirmImport(reviewed: ParsedScheduleDraft) {
     setConfirmError("");
     setIsConfirming(true);
     try {
       const result = await confirmReviewedImport(reviewed);
-      const nextShifts = draftToShifts(reviewed, result.importId);
-      const nextPositionShifts = nextShifts.filter((shift) => !isLifeguardRotationDepartment(shift.departmentLabel));
-      const nextRotationShifts = nextShifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel));
-      const nextDepartments = uniqueSorted(nextPositionShifts.map((shift) => shift.departmentLabel));
-      const nextDates = uniqueSorted(nextPositionShifts.map((shift) => shift.shiftDate));
-      const nextPositionLists = withDefaultLists(positionLists, nextDepartments);
-
-      setShifts(nextShifts);
-      setCalloutShiftIds({});
-      setSelectedDate(nextDates[0] ?? "");
-      setSelectedDepartment(nextDepartments[0] ?? "");
-      setPositionLists(nextPositionLists);
-      setSelectedListIds(selectedListIdsForDepartments(nextPositionLists, nextDepartments));
-      setAssignments([]);
-      setView(nextDepartments.length > 0 ? "positions" : nextRotationShifts.length > 0 ? "rotations" : "import");
+      loadShiftsIntoWorkspace(draftToShifts(reviewed, result.importId));
     } catch (caught) {
       setConfirmError(caught instanceof Error ? caught.message : "Import could not be confirmed");
     } finally {
       setIsConfirming(false);
+    }
+  }
+
+  async function refreshSavedSchedules() {
+    setSavedScheduleError("");
+    setIsLoadingSavedSchedules(true);
+    try {
+      setSavedSchedules(await listSavedSchedulesRequest());
+    } catch (caught) {
+      setSavedScheduleError(caught instanceof Error ? caught.message : "Saved schedules could not be loaded");
+    } finally {
+      setIsLoadingSavedSchedules(false);
+    }
+  }
+
+  async function loadSavedSchedule(scheduleImportId: string) {
+    setSavedScheduleError("");
+    setIsLoadingSavedSchedule(true);
+    try {
+      const schedule = await loadSavedScheduleRequest(scheduleImportId);
+      loadShiftsIntoWorkspace(schedule.shifts);
+    } catch (caught) {
+      setSavedScheduleError(caught instanceof Error ? caught.message : "Saved schedule could not be loaded");
+    } finally {
+      setIsLoadingSavedSchedule(false);
     }
   }
 
@@ -349,7 +383,17 @@ export function App() {
       ) : null}
 
       {view === "import" ? (
-        <ImportPanel onDraft={confirmImport} isImporting={isConfirming} externalError={confirmError} />
+        <ImportPanel
+          onDraft={confirmImport}
+          isImporting={isConfirming}
+          externalError={confirmError}
+          savedSchedules={savedSchedules}
+          onRequestSavedSchedules={refreshSavedSchedules}
+          onLoadSavedSchedule={loadSavedSchedule}
+          isLoadingSavedSchedules={isLoadingSavedSchedules}
+          isLoadingSavedSchedule={isLoadingSavedSchedule}
+          savedScheduleError={savedScheduleError}
+        />
       ) : null}
 
       {view === "positions" ? (

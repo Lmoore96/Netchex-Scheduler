@@ -722,3 +722,51 @@ button:focus-visible {
     padding: 0;
   }
 }
+
+.import-panel__grid {
+  align-items: stretch;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 0.9fr);
+}
+
+.import-panel__saved {
+  align-content: start;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  min-height: 190px;
+  padding: 20px;
+}
+
+.import-panel__saved > button {
+  width: fit-content;
+}
+
+.import-panel__saved-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.import-panel__saved-picker label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.import-panel__saved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .import-panel__grid {
+    grid-template-columns: 1fr;
+  }
+}

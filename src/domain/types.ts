@@ -87,3 +87,21 @@ export interface ParsedScheduleDraft {
   shifts: ParsedShiftDraft[];
   warnings: string[];
 }
+
+export interface SavedScheduleSummary {
+  id: string;
+  sourceFileName: string;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  importedAt: string;
+  shiftCount: number;
+}
+
+export interface LoadedSchedule {
+  importId: string;
+  sourceFileName: string;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  shifts: Shift[];
+  warnings: string[];
+}
