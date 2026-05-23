@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Shift } from "../domain/types";
+import { loadRotationPlan, saveRotationPlan } from "../lib/storageClient";
 import { formatShiftRange } from "../lib/time";
+import type { PersistenceState } from "./AssignmentPersistenceActions";
 import "./RotationBuilder.css";
 
 type RotationKind = "special" | "shallow";
@@ -164,6 +166,55 @@ function loadRotationTemplates() {
   }
 }
 
+function isRotationKind(value: string): value is RotationKind {
+  return value === "special" || value === "shallow";
+}
+
+function isRotationTone(value: string): value is RotationTone {
+  return value === "orange" || value === "cyan" || value === "green";
+}
+
+function restoreRotationTemplates(savedTemplates: unknown): RotationDefinition[] {
+  if (!Array.isArray(savedTemplates)) return defaultRotations;
+
+  const restored = savedTemplates
+    .map((rotation) => {
+      if (!rotation || typeof rotation !== "object") return null;
+      const candidate = rotation as Partial<RotationDefinition>;
+      const kind = String(candidate.kind);
+      const tone = String(candidate.tone);
+      if (!candidate.id || !candidate.title || !isRotationKind(kind) || !isRotationTone(tone)) {
+        return null;
+      }
+
+      return {
+        id: String(candidate.id),
+        title: String(candidate.title),
+        subtitle: String(candidate.subtitle ?? ""),
+        kind,
+        tone,
+        positions: Array.isArray(candidate.positions)
+          ? candidate.positions
+              .filter((position) => position?.id && position?.label)
+              .map((position) => ({ id: String(position.id), label: String(position.label) }))
+          : []
+      } satisfies RotationDefinition;
+    })
+    .filter((rotation): rotation is RotationDefinition => Boolean(rotation));
+
+  return restored.length > 0 ? restored : defaultRotations;
+}
+
+function rotationStatusMessage(saveState: PersistenceState) {
+  if (saveState === "saving") return "Saving rotations...";
+  if (saveState === "saved") return "Rotations saved.";
+  if (saveState === "loading") return "Loading saved rotations...";
+  if (saveState === "loaded") return "Saved rotations loaded.";
+  if (saveState === "empty") return "No saved rotations found for this date.";
+  if (saveState === "error") return "Rotations could not be saved or loaded.";
+  return "";
+}
+
 export function RotationBuilder({ shifts }: RotationBuilderProps) {
   const dates = useMemo(() => uniqueSorted(shifts.map((shift) => shift.shiftDate)), [shifts]);
   const [selectedDate, setSelectedDate] = useState("");
@@ -176,6 +227,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
   const [newPositionLabels, setNewPositionLabels] = useState<Record<string, string>>({});
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
   const [isSupportCollapsed, setIsSupportCollapsed] = useState(false);
+  const [rotationSaveState, setRotationSaveState] = useState<PersistenceState>("idle");
 
   useEffect(() => {
     if (!selectedDate && dates[0]) {
@@ -206,6 +258,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
     () => shifts.filter((shift) => shift.shiftDate === currentDate),
     [currentDate, shifts]
   );
+  const currentScheduleImportId = dateShifts[0]?.scheduleImportId ?? "";
   const assignedShiftIds = useMemo(
     () => new Set(Object.values(assignments).filter(Boolean)),
     [assignments]
@@ -237,10 +290,12 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
     setSelectedDate(date);
     setAssignments({});
     setSupportAssignments({ captains: [], slideAttendants: [] });
+    setRotationSaveState("idle");
   }
 
   function selectAssignment(key: string, shiftId: string) {
     setAssignments((current) => ({ ...current, [key]: shiftId }));
+    setRotationSaveState("idle");
   }
 
   function addSupportAssignment(role: SupportRole, shiftId: string) {
@@ -253,6 +308,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
     setAssignments((current) =>
       Object.fromEntries(Object.entries(current).filter(([, assignedShiftId]) => assignedShiftId !== shiftId))
     );
+    setRotationSaveState("idle");
   }
 
   function removeSupportAssignment(role: SupportRole, shiftId: string) {
@@ -260,6 +316,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
       ...current,
       [role]: current[role].filter((currentShiftId) => currentShiftId !== shiftId)
     }));
+    setRotationSaveState("idle");
   }
 
   function autofillRotations() {
@@ -283,10 +340,12 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
     });
 
     setAssignments(nextAssignments);
+    setRotationSaveState("idle");
   }
 
   function clearAssignments() {
     setAssignments({});
+    setRotationSaveState("idle");
   }
 
   function updatePositionLabel(rotationId: string, positionId: string, label: string) {
@@ -302,6 +361,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
           : rotation
       )
     );
+    setRotationSaveState("idle");
   }
 
   function movePosition(rotationId: string, positionId: string, direction: -1 | 1) {
@@ -319,6 +379,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
         return { ...rotation, positions: nextPositions };
       })
     );
+    setRotationSaveState("idle");
   }
 
   function removePosition(rotationId: string, positionId: string) {
@@ -334,6 +395,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
       delete next[assignmentKey(rotationId, positionId)];
       return next;
     });
+    setRotationSaveState("idle");
   }
 
   function addPosition(rotationId: string) {
@@ -357,12 +419,52 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
       })
     );
     setNewPositionLabels((current) => ({ ...current, [rotationId]: "" }));
+    setRotationSaveState("idle");
   }
 
   function resetRotations() {
     setRotationTemplates(defaultRotations);
     setAssignments({});
     setNewPositionLabels({});
+    setRotationSaveState("idle");
+  }
+
+  async function saveCurrentRotationPlan() {
+    if (!currentScheduleImportId || !currentDate) return;
+
+    setRotationSaveState("saving");
+    try {
+      await saveRotationPlan({
+        scheduleImportId: currentScheduleImportId,
+        planDate: currentDate,
+        rotationTemplates,
+        assignments,
+        supportAssignments
+      });
+      setRotationSaveState("saved");
+    } catch {
+      setRotationSaveState("error");
+    }
+  }
+
+  async function loadCurrentRotationPlan() {
+    if (!currentScheduleImportId || !currentDate) return;
+
+    setRotationSaveState("loading");
+    try {
+      const plan = await loadRotationPlan({ scheduleImportId: currentScheduleImportId, planDate: currentDate });
+      if (!plan) {
+        setRotationSaveState("empty");
+        return;
+      }
+
+      setRotationTemplates(restoreRotationTemplates(plan.rotationTemplates));
+      setAssignments(plan.assignments);
+      setSupportAssignments(plan.supportAssignments);
+      setRotationSaveState("loaded");
+    } catch {
+      setRotationSaveState("error");
+    }
   }
 
   function renderSupportGroup(title: string, role: SupportRole, assignedShifts: Shift[], options: Shift[]) {
@@ -422,6 +524,12 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
           <button type="button" onClick={clearAssignments} disabled={Object.keys(assignments).length === 0 || isEditingTemplate}>
             Clear
           </button>
+          <button type="button" onClick={() => void saveCurrentRotationPlan()} disabled={!currentScheduleImportId || isEditingTemplate}>
+            Save rotations
+          </button>
+          <button type="button" onClick={() => void loadCurrentRotationPlan()} disabled={!currentScheduleImportId || isEditingTemplate}>
+            Load saved rotations
+          </button>
           <button type="button" onClick={() => setIsEditingTemplate((current) => !current)}>
             {isEditingTemplate ? "Done editing" : "Edit rotations"}
           </button>
@@ -442,6 +550,12 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
         </p>
       ) : (
         <>
+          {rotationStatusMessage(rotationSaveState) ? (
+            <p className="rotation-builder__status no-print" role="status">
+              {rotationStatusMessage(rotationSaveState)}
+            </p>
+          ) : null}
+
           <div className="rotation-builder__counts" aria-label="Scheduled lifeguard counts">
             <span>{specialCount} Special Facilities</span>
             <span>{shallowCount} Shallow</span>

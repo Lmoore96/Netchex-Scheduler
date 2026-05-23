@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AssignmentBoard } from "./components/AssignmentBoard";
+import { AssignmentPersistenceActions, type PersistenceState } from "./components/AssignmentPersistenceActions";
 import { CalloutManager } from "./components/CalloutManager";
 import { DayDepartmentPicker } from "./components/DayDepartmentPicker";
 import { ImportPanel } from "./components/ImportPanel";
@@ -11,9 +12,12 @@ import type { Assignment, ParsedScheduleDraft, PositionDefinition, PositionList,
 import {
   confirmReviewedImport,
   deletePositionList as deletePositionListRequest,
+  deleteSavedSchedule as deleteSavedScheduleRequest,
   listSavedSchedules as listSavedSchedulesRequest,
+  loadAssignmentPlan as loadAssignmentPlanRequest,
   loadPositionLists,
   loadSavedSchedule as loadSavedScheduleRequest,
+  saveAssignmentPlan as saveAssignmentPlanRequest,
   savePositionList as savePositionListRequest
 } from "./lib/storageClient";
 
@@ -116,6 +120,7 @@ export function App() {
   const [savedScheduleError, setSavedScheduleError] = useState("");
   const [isLoadingSavedSchedules, setIsLoadingSavedSchedules] = useState(false);
   const [isLoadingSavedSchedule, setIsLoadingSavedSchedule] = useState(false);
+  const [assignmentSaveState, setAssignmentSaveState] = useState<PersistenceState>("idle");
 
   useEffect(() => {
     let isMounted = true;
@@ -200,7 +205,8 @@ export function App() {
     setIsConfirming(true);
     try {
       const result = await confirmReviewedImport(reviewed);
-      loadShiftsIntoWorkspace(draftToShifts(reviewed, result.importId));
+      const schedule = await loadSavedScheduleRequest(result.importId);
+      loadShiftsIntoWorkspace(schedule.shifts.length > 0 ? schedule.shifts : draftToShifts(reviewed, result.importId));
     } catch (caught) {
       setConfirmError(caught instanceof Error ? caught.message : "Import could not be confirmed");
     } finally {
@@ -230,6 +236,73 @@ export function App() {
       setSavedScheduleError(caught instanceof Error ? caught.message : "Saved schedule could not be loaded");
     } finally {
       setIsLoadingSavedSchedule(false);
+    }
+  }
+
+  async function deleteSavedSchedule(scheduleImportId: string) {
+    setSavedScheduleError("");
+    try {
+      await deleteSavedScheduleRequest(scheduleImportId);
+      setSavedSchedules((current) => current.filter((schedule) => schedule.id !== scheduleImportId));
+      if (shifts.some((shift) => shift.scheduleImportId === scheduleImportId)) {
+        setShifts([]);
+        setCalloutShiftIds({});
+        setAssignments([]);
+        setSelectedDate("");
+        setSelectedDepartment("");
+        setView("import");
+      }
+    } catch (caught) {
+      setSavedScheduleError(caught instanceof Error ? caught.message : "Saved schedule could not be deleted");
+    }
+  }
+
+  async function saveCurrentAssignments() {
+    const scheduleImportId = visibleShifts[0]?.scheduleImportId;
+    if (!scheduleImportId) return;
+
+    setAssignmentSaveState("saving");
+    try {
+      const visibleShiftIds = new Set(visibleShifts.map((shift) => shift.id));
+      await saveAssignmentPlanRequest({
+        scheduleImportId,
+        planDate: currentDate,
+        departmentLabel: currentDepartment,
+        positionListId: selectedList?.id ?? selectedListId,
+        positionsSnapshot: selectedPositions,
+        assignments: assignments.filter((assignment) => visibleShiftIds.has(assignment.shiftId))
+      });
+      setAssignmentSaveState("saved");
+    } catch {
+      setAssignmentSaveState("error");
+    }
+  }
+
+  async function loadCurrentAssignments() {
+    const scheduleImportId = visibleShifts[0]?.scheduleImportId;
+    if (!scheduleImportId) return;
+
+    setAssignmentSaveState("loading");
+    try {
+      const plan = await loadAssignmentPlanRequest({
+        scheduleImportId,
+        planDate: currentDate,
+        departmentLabel: currentDepartment
+      });
+
+      if (!plan) {
+        setAssignmentSaveState("empty");
+        return;
+      }
+
+      const visibleShiftIds = new Set(visibleShifts.map((shift) => shift.id));
+      setAssignments((current) => [
+        ...current.filter((assignment) => !visibleShiftIds.has(assignment.shiftId)),
+        ...plan.assignments
+      ]);
+      setAssignmentSaveState("loaded");
+    } catch {
+      setAssignmentSaveState("error");
     }
   }
 
@@ -390,6 +463,7 @@ export function App() {
           savedSchedules={savedSchedules}
           onRequestSavedSchedules={refreshSavedSchedules}
           onLoadSavedSchedule={loadSavedSchedule}
+          onDeleteSavedSchedule={deleteSavedSchedule}
           isLoadingSavedSchedules={isLoadingSavedSchedules}
           isLoadingSavedSchedule={isLoadingSavedSchedule}
           savedScheduleError={savedScheduleError}
@@ -420,11 +494,20 @@ export function App() {
             </div>
             <span>{selectedList?.name ?? "Default list"}</span>
           </div>
+          <AssignmentPersistenceActions
+            canUse={visibleShifts.length > 0}
+            saveState={assignmentSaveState}
+            onSave={saveCurrentAssignments}
+            onLoad={loadCurrentAssignments}
+          />
           <AssignmentBoard
             positions={selectedPositions}
             shifts={visibleShifts}
             assignments={assignments}
-            onChange={setAssignments}
+            onChange={(nextAssignments) => {
+              setAssignments(nextAssignments);
+              setAssignmentSaveState("idle");
+            }}
           />
         </section>
       ) : null}

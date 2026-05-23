@@ -9,6 +9,7 @@ interface ImportPanelProps {
   savedSchedules?: SavedScheduleSummary[];
   onRequestSavedSchedules?: () => void | Promise<void>;
   onLoadSavedSchedule?: (scheduleImportId: string) => void | Promise<void>;
+  onDeleteSavedSchedule?: (scheduleImportId: string) => void | Promise<void>;
   isLoadingSavedSchedules?: boolean;
   isLoadingSavedSchedule?: boolean;
   savedScheduleError?: string;
@@ -32,6 +33,7 @@ export function ImportPanel({
   savedSchedules = [],
   onRequestSavedSchedules,
   onLoadSavedSchedule,
+  onDeleteSavedSchedule,
   isLoadingSavedSchedules = false,
   isLoadingSavedSchedule = false,
   savedScheduleError = ""
@@ -74,6 +76,13 @@ export function ImportPanel({
   async function loadSelectedSchedule() {
     if (!selectedScheduleId) return;
     await onLoadSavedSchedule?.(selectedScheduleId);
+  }
+
+  async function deleteSelectedSchedule() {
+    if (!selectedScheduleId) return;
+    const shouldDelete = window.confirm("Delete this saved schedule? This cannot be undone.");
+    if (!shouldDelete) return;
+    await onDeleteSavedSchedule?.(selectedScheduleId);
   }
 
   return (
@@ -139,6 +148,9 @@ export function ImportPanel({
               </button>
               <button type="button" disabled={isBusy || isLoadingSavedSchedules || !selectedScheduleId} onClick={() => void loadSelectedSchedule()}>
                 Load schedule
+              </button>
+              <button type="button" className="button-danger" disabled={isBusy || isLoadingSavedSchedules || !selectedScheduleId} onClick={() => void deleteSelectedSchedule()}>
+                Delete
               </button>
             </div>
           </div>

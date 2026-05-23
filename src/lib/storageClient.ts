@@ -1,4 +1,4 @@
-import type { LoadedSchedule, ParsedScheduleDraft, PositionList, SavedScheduleSummary } from "../domain/types";
+import type { AssignmentPlanRequest, LoadedSchedule, ParsedScheduleDraft, PositionList, SavedAssignmentPlan, SavedRotationPlan, SavedScheduleSummary, RotationPlanRequest } from "../domain/types";
 import { parsedScheduleDraftSchema, positionDefinitionSchema } from "../domain/validation";
 import { z } from "zod";
 
@@ -125,6 +125,66 @@ const loadedScheduleResponseSchema = z.object({
   })
 });
 
+const assignmentSchema = z.object({
+  id: z.string().min(1),
+  dailyPositionPlanId: z.string().min(1),
+  shiftId: z.string().min(1),
+  positionKey: z.string().min(1),
+  sortOrder: z.number().int().min(0),
+  notes: z.string().optional()
+});
+
+const assignmentPlanSchema = z.object({
+  id: z.string().min(1),
+  scheduleImportId: z.string().min(1),
+  planDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  departmentLabel: z.string().min(1),
+  positionListId: z.string(),
+  positionsSnapshot: z.array(positionDefinitionSchema),
+  assignments: z.array(assignmentSchema),
+  savedAt: z.string().min(1)
+});
+
+const assignmentPlanResponseSchema = z.object({
+  plan: assignmentPlanSchema.nullable()
+});
+
+const rotationPositionSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1)
+});
+
+const rotationTemplateSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  subtitle: z.string(),
+  kind: z.string().min(1),
+  tone: z.string().min(1),
+  positions: z.array(rotationPositionSchema)
+});
+
+const rotationPlanSchema = z.object({
+  id: z.string().min(1),
+  scheduleImportId: z.string().min(1),
+  planDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  rotationTemplates: z.array(rotationTemplateSchema),
+  assignments: z.record(z.string()),
+  supportAssignments: z.object({
+    captains: z.array(z.string()),
+    slideAttendants: z.array(z.string())
+  }),
+  savedAt: z.string().min(1)
+});
+
+const rotationPlanResponseSchema = z.object({
+  plan: rotationPlanSchema.nullable()
+});
+
+const saveResponseSchema = z.object({
+  saved: z.boolean()
+});
+
+
 export async function loadPositionLists(): Promise<PositionList[]> {
   const response = await fetch("/.netlify/functions/position-lists");
   return positionListsResponseSchema.parse(await parseJsonResponse(response)).positionLists;
@@ -160,4 +220,53 @@ export async function listSavedSchedules(): Promise<SavedScheduleSummary[]> {
 export async function loadSavedSchedule(scheduleImportId: string): Promise<LoadedSchedule> {
   const response = await fetch(`/.netlify/functions/saved-schedules?id=${encodeURIComponent(scheduleImportId)}`);
   return loadedScheduleResponseSchema.parse(await parseJsonResponse(response)).schedule;
+}
+
+export async function deleteSavedSchedule(scheduleImportId: string): Promise<void> {
+  const response = await fetch(`/.netlify/functions/saved-schedules?id=${encodeURIComponent(scheduleImportId)}`, {
+    method: "DELETE"
+  });
+
+  deletePositionListResponseSchema.parse(await parseJsonResponse(response));
+}
+
+export async function saveAssignmentPlan(plan: AssignmentPlanRequest): Promise<SavedAssignmentPlan> {
+  const response = await fetch("/.netlify/functions/assignment-plans", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(plan)
+  });
+
+  return assignmentPlanResponseSchema.parse(await parseJsonResponse(response)).plan as SavedAssignmentPlan;
+}
+
+export async function loadAssignmentPlan(params: Pick<AssignmentPlanRequest, "scheduleImportId" | "planDate" | "departmentLabel">): Promise<SavedAssignmentPlan | null> {
+  const query = new URLSearchParams({
+    scheduleImportId: params.scheduleImportId,
+    planDate: params.planDate,
+    departmentLabel: params.departmentLabel
+  });
+  const response = await fetch(`/.netlify/functions/assignment-plans?${query.toString()}`);
+
+  return assignmentPlanResponseSchema.parse(await parseJsonResponse(response)).plan;
+}
+
+export async function saveRotationPlan(plan: RotationPlanRequest): Promise<SavedRotationPlan> {
+  const response = await fetch("/.netlify/functions/rotation-plans", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(plan)
+  });
+
+  return rotationPlanResponseSchema.parse(await parseJsonResponse(response)).plan as SavedRotationPlan;
+}
+
+export async function loadRotationPlan(params: Pick<RotationPlanRequest, "scheduleImportId" | "planDate">): Promise<SavedRotationPlan | null> {
+  const query = new URLSearchParams({
+    scheduleImportId: params.scheduleImportId,
+    planDate: params.planDate
+  });
+  const response = await fetch(`/.netlify/functions/rotation-plans?${query.toString()}`);
+
+  return rotationPlanResponseSchema.parse(await parseJsonResponse(response)).plan;
 }

@@ -1,5 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Assignment, ParsedScheduleDraft, PositionDefinition } from "../../../src/domain/types";
+import type {
+  Assignment,
+  AssignmentPlanRequest,
+  ParsedScheduleDraft,
+  PositionDefinition,
+  RotationPlanRequest
+} from "../../../src/domain/types";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -36,6 +42,16 @@ export function createSupabaseRepository() {
       if (error) throw error;
       if (!data) throw new Error("Saved schedule was not found");
       return data;
+    },
+
+    async deleteSavedSchedule(importId: string) {
+      const { error } = await supabase
+        .from("schedule_imports")
+        .delete()
+        .eq("id", importId);
+
+      if (error) throw error;
+      return { deleted: true };
     },
 
     async listPositionLists() {
@@ -103,6 +119,41 @@ export function createSupabaseRepository() {
 
       if (error) throw error;
       return { saved: true, count: data ?? 0 };
+    },
+
+    async saveAssignmentPlan(plan: AssignmentPlanRequest) {
+      const { data, error } = await supabase.rpc("save_assignment_plan", { plan });
+
+      if (error) throw error;
+      return data;
+    },
+
+    async loadAssignmentPlan(scheduleImportId: string, planDate: string, departmentLabel: string) {
+      const { data, error } = await supabase.rpc("load_assignment_plan", {
+        import_id: scheduleImportId,
+        target_date: planDate,
+        target_department: departmentLabel
+      });
+
+      if (error) throw error;
+      return data;
+    },
+
+    async saveRotationPlan(plan: RotationPlanRequest) {
+      const { data, error } = await supabase.rpc("save_rotation_plan", { plan });
+
+      if (error) throw error;
+      return data;
+    },
+
+    async loadRotationPlan(scheduleImportId: string, planDate: string) {
+      const { data, error } = await supabase.rpc("load_rotation_plan", {
+        import_id: scheduleImportId,
+        target_date: planDate
+      });
+
+      if (error) throw error;
+      return data;
     }
   };
 }

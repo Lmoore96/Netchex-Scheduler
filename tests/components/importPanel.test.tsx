@@ -49,4 +49,27 @@ describe("ImportPanel", () => {
 
     expect(onRequestSavedSchedules).toHaveBeenCalledOnce();
   });
+
+  it("lets managers delete the selected saved schedule", async () => {
+    const user = userEvent.setup();
+    const onDeleteSavedSchedule = vi.fn();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <ImportPanel
+        onDraft={() => undefined}
+        savedSchedules={savedSchedules}
+        onRequestSavedSchedules={() => undefined}
+        onDeleteSavedSchedule={onDeleteSavedSchedule}
+      />
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Load Saved" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith("Delete this saved schedule? This cannot be undone.");
+    expect(onDeleteSavedSchedule).toHaveBeenCalledWith("import-1");
+
+    confirmSpy.mockRestore();
+  });
 });

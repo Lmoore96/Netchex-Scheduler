@@ -105,3 +105,50 @@ export interface LoadedSchedule {
   shifts: Shift[];
   warnings: string[];
 }
+
+
+export interface AssignmentPlanRequest {
+  scheduleImportId: string;
+  planDate: string;
+  departmentLabel: string;
+  positionListId: string;
+  positionsSnapshot: PositionDefinition[];
+  assignments: Assignment[];
+}
+
+export interface SavedAssignmentPlan extends AssignmentPlanRequest {
+  id: string;
+  savedAt: string;
+}
+
+export interface RotationPlanPosition {
+  id: string;
+  label: string;
+}
+
+export interface RotationPlanTemplate {
+  id: string;
+  title: string;
+  subtitle: string;
+  kind: string;
+  tone: string;
+  positions: RotationPlanPosition[];
+}
+
+export interface RotationPlanSupportAssignments {
+  captains: string[];
+  slideAttendants: string[];
+}
+
+export interface RotationPlanRequest {
+  scheduleImportId: string;
+  planDate: string;
+  rotationTemplates: RotationPlanTemplate[];
+  assignments: Record<string, string>;
+  supportAssignments: RotationPlanSupportAssignments;
+}
+
+export interface SavedRotationPlan extends RotationPlanRequest {
+  id: string;
+  savedAt: string;
+}

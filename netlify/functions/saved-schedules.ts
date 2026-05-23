@@ -35,10 +35,6 @@ function errorDetails(caught: unknown) {
 }
 
 export const handler: Handler = async (event) => {
-  if (event.httpMethod !== "GET") {
-    return errorResponse("Method not allowed", 405, { Allow: "GET" });
-  }
-
   if (!isAccessAllowed(event)) {
     return accessDeniedResponse();
   }
@@ -46,6 +42,19 @@ export const handler: Handler = async (event) => {
   try {
     const repository = createSupabaseRepository();
     const scheduleImportId = event.queryStringParameters?.id;
+
+    if (event.httpMethod === "DELETE") {
+      if (!scheduleImportId) {
+        return errorResponse("Saved schedule id is required", 400);
+      }
+
+      await repository.deleteSavedSchedule(scheduleImportId);
+      return jsonResponse({ deleted: true });
+    }
+
+    if (event.httpMethod !== "GET") {
+      return errorResponse("Method not allowed", 405, { Allow: "GET, DELETE" });
+    }
 
     if (scheduleImportId) {
       const schedule = await repository.loadSavedSchedule(scheduleImportId);
