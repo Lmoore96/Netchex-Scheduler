@@ -1,8 +1,13 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PrintView } from "../../src/components/PrintView";
 
 describe("PrintView", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("shows department, date, positions, assigned employees, and unassigned employees", () => {
     render(
       <PrintView
@@ -52,4 +57,23 @@ describe("PrintView", () => {
     expect(screen.getByText("Unassigned")).toBeInTheDocument();
     expect(screen.getByText("ASH, ERIN")).toBeInTheDocument();
   });
+  it("lets managers print the crew list", async () => {
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    const user = userEvent.setup();
+
+    render(
+      <PrintView
+        departmentName="Splash Crew"
+        date="2026-05-22"
+        positions={[]}
+        shifts={[]}
+        assignments={[]}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Print crew list" }));
+
+    expect(printSpy).toHaveBeenCalledOnce();
+  });
+
 });

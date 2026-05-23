@@ -32,8 +32,13 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
   return (
     <section className="print-sheet" aria-label={`${departmentName} print sheet`}>
       <header className="print-sheet__header">
-        <h1>{departmentName}</h1>
-        <p>{date}</p>
+        <div>
+          <h1>{departmentName}</h1>
+          <p>{date}</p>
+        </div>
+        <button type="button" className="no-print" onClick={() => window.print()}>
+          Print crew list
+        </button>
       </header>
 
       {sortByOrder(positions).map((position) => {
