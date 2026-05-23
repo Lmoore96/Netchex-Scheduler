@@ -16,7 +16,7 @@ const savedSchedules: SavedScheduleSummary[] = [
 ];
 
 describe("ImportPanel", () => {
-  it("lets managers load a saved schedule from the first page", async () => {
+  it("lets managers load a saved schedule from the load tab", async () => {
     const user = userEvent.setup();
     const onLoadSavedSchedule = vi.fn();
 
@@ -29,8 +29,10 @@ describe("ImportPanel", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Load saved schedule" }));
+    expect(screen.getByLabelText("Import PDF")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Load Saved" }));
     expect(screen.getByLabelText("Saved schedule")).toHaveValue("import-1");
+    expect(screen.queryByLabelText("Import PDF")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Load schedule" }));
 
@@ -43,7 +45,7 @@ describe("ImportPanel", () => {
 
     render(<ImportPanel onDraft={() => undefined} onRequestSavedSchedules={onRequestSavedSchedules} />);
 
-    await user.click(screen.getByRole("button", { name: "Load saved schedule" }));
+    await user.click(screen.getByRole("tab", { name: "Load Saved" }));
 
     expect(onRequestSavedSchedules).toHaveBeenCalledOnce();
   });

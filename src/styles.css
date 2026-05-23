@@ -723,11 +723,33 @@ button:focus-visible {
   }
 }
 
-.import-panel__grid {
-  align-items: stretch;
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(260px, 1fr) minmax(260px, 0.9fr);
+.import-panel__tabs {
+  align-items: center;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 4px;
+}
+
+.import-panel__tabs button {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  min-width: 118px;
+}
+
+.import-panel__tabs button.is-active {
+  background: #ffffff;
+  border-color: var(--line-strong);
+  box-shadow: 0 6px 18px rgba(31, 41, 51, 0.08);
+  color: var(--teal-dark);
+}
+
+.import-panel__tab-panel {
+  margin-top: 14px;
 }
 
 .import-panel__saved {
@@ -737,13 +759,8 @@ button:focus-visible {
   border-radius: 8px;
   display: grid;
   gap: 14px;
-  margin-top: 14px;
   min-height: 190px;
   padding: 20px;
-}
-
-.import-panel__saved > button {
-  width: fit-content;
 }
 
 .import-panel__saved-picker {
@@ -763,10 +780,4 @@ button:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-@media (max-width: 760px) {
-  .import-panel__grid {
-    grid-template-columns: 1fr;
-  }
 }
