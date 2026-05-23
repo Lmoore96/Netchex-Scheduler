@@ -21,6 +21,19 @@ function shiftTime(shift: Shift) {
   return formatShiftRange(shift.startTime, shift.endTime);
 }
 
+function formatEmployeeName(employeeName: string) {
+  const trimmed = employeeName.trim().replace(/\s+/g, " ");
+  const parts = trimmed.split(",");
+
+  if (parts.length > 1) {
+    const lastName = parts[0].trim();
+    const firstName = parts.slice(1).join(",").trim();
+    if (firstName && lastName) return `${firstName} ${lastName}`;
+  }
+
+  return trimmed;
+}
+
 export function PrintView({ departmentName, date, positions, shifts, assignments }: PrintViewProps) {
   const visibleShiftIds = new Set(shifts.map((shift) => shift.id));
   const assignedShiftIds = new Set(
@@ -58,7 +71,7 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
                   const shift = shiftFor(shifts, assignment.shiftId);
                   return (
                     <li key={assignment.shiftId}>
-                      <strong>{shift?.employeeName ?? "Unknown employee"}</strong>
+                      <strong>{shift ? formatEmployeeName(shift.employeeName) : "Unknown employee"}</strong>
                       {shift ? <span>{shiftTime(shift)}</span> : null}
                     </li>
                   );
@@ -78,7 +91,7 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
             .filter((shift) => !assignedShiftIds.has(shift.id))
             .map((shift) => (
               <li key={shift.id}>
-                <strong>{shift.employeeName}</strong>
+                <strong>{formatEmployeeName(shift.employeeName)}</strong>
                 <span>{shiftTime(shift)}</span>
               </li>
             ))}

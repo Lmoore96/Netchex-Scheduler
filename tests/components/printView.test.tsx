@@ -53,9 +53,9 @@ describe("PrintView", () => {
     expect(screen.getByText("Splash Crew")).toBeInTheDocument();
     expect(screen.getByText("2026-05-22")).toBeInTheDocument();
     expect(screen.getByText("Tower 1")).toBeInTheDocument();
-    expect(screen.getByText("AL-RAJAI, MAI")).toBeInTheDocument();
+    expect(screen.getByText("MAI AL-RAJAI")).toBeInTheDocument();
     expect(screen.getByText("Unassigned")).toBeInTheDocument();
-    expect(screen.getByText("ASH, ERIN")).toBeInTheDocument();
+    expect(screen.getByText("ERIN ASH")).toBeInTheDocument();
   });
   it("lets managers print the crew list", async () => {
     const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
