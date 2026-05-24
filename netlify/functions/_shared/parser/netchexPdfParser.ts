@@ -1,12 +1,25 @@
-import { createRequire } from "node:module";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { addDays, format, parse } from "date-fns";
 import type { ParsedScheduleDraft, ParsedShiftDraft } from "../../../../src/domain/types";
 import { normalizeDepartmentLabel } from "../../../../src/lib/department";
 
-const require = createRequire(import.meta.url);
-pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href;
+function pdfWorkerSrc() {
+  const candidates = [
+    process.env.PDFJS_WORKER_PATH,
+    path.join(process.cwd(), "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"),
+    path.join(process.cwd(), "netlify/functions/pdf.worker.mjs"),
+    "/var/task/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+    "/var/task/netlify/functions/pdf.worker.mjs"
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  const workerPath = candidates.find((candidate) => existsSync(candidate));
+  return workerPath ? pathToFileURL(workerPath).href : pathToFileURL(candidates[0]).href;
+}
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc();
 
 interface TextItem {
   str: string;
