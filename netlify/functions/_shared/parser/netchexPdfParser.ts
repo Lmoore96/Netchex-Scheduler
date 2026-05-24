@@ -1,9 +1,12 @@
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { addDays, format, parse } from "date-fns";
 import type { ParsedScheduleDraft, ParsedShiftDraft } from "../../../../src/domain/types";
 import { normalizeDepartmentLabel } from "../../../../src/lib/department";
 
-pdfjs.GlobalWorkerOptions.workerSrc = "../../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs";
+const require = createRequire(import.meta.url);
+pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href;
 
 interface TextItem {
   str: string;
@@ -224,7 +227,7 @@ function rowText(row: TextRow, minX = -Infinity, maxX = Infinity): string {
 }
 
 function isHoursText(value: string): boolean {
-  return /^\d+(?:\.\d+)?\s+Hrs$/i.test(value);
+  return /^\d+(?:\.\d+)?(?:\s+Hrs)?$/i.test(value);
 }
 
 function isEmployeeStart(row: TextRow): boolean {
@@ -234,11 +237,11 @@ function isEmployeeStart(row: TextRow): boolean {
   return !["EMPLOYEES", "GIWP", "Netchex Scheduler"].includes(leftText);
 }
 
-function employeeNameForBlock(rows: TextRow[]): string {
+export function employeeNameForBlock(rows: TextRow[]): string {
   const nameParts: string[] = [];
 
   for (const row of rows) {
-    const leftText = rowText(row, 40, 150);
+    const leftText = rowText(row, 40, 130);
     if (!leftText || isHoursText(leftText)) break;
     if (footerPattern.test(leftText)) continue;
     nameParts.push(leftText);
