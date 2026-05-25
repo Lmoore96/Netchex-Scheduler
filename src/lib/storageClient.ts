@@ -1,4 +1,4 @@
-import type { AssignmentPlanRequest, LoadedSchedule, ParsedScheduleDraft, PositionList, SavedAssignmentPlan, SavedRotationPlan, SavedScheduleSummary, RotationPlanRequest } from "../domain/types";
+import type { AssignmentPlanRequest, LoadedSchedule, ManualShiftRequest, ParsedScheduleDraft, PositionList, SavedAssignmentPlan, SavedRotationPlan, SavedScheduleSummary, RotationPlanRequest, Shift } from "../domain/types";
 import { parsedScheduleDraftSchema, positionDefinitionSchema } from "../domain/validation";
 import { z } from "zod";
 
@@ -125,6 +125,10 @@ const loadedScheduleResponseSchema = z.object({
   })
 });
 
+const manualShiftResponseSchema = z.object({
+  shift: loadedShiftSchema
+});
+
 const assignmentSchema = z.object({
   id: z.string().min(1),
   dailyPositionPlanId: z.string().min(1),
@@ -228,6 +232,16 @@ export async function deleteSavedSchedule(scheduleImportId: string): Promise<voi
   });
 
   deletePositionListResponseSchema.parse(await parseJsonResponse(response));
+}
+
+export async function addManualShift(shift: ManualShiftRequest): Promise<Shift> {
+  const response = await fetch("/.netlify/functions/manual-shifts", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(shift)
+  });
+
+  return manualShiftResponseSchema.parse(await parseJsonResponse(response)).shift;
 }
 
 export async function saveAssignmentPlan(plan: AssignmentPlanRequest): Promise<SavedAssignmentPlan> {

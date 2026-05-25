@@ -708,6 +708,56 @@ button:focus-visible {
   color: var(--danger);
 }
 
+.manual-shift {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.manual-shift > button {
+  justify-self: start;
+}
+
+.manual-shift__form {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 0.8fr) minmax(180px, 1fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr) auto;
+}
+
+.manual-shift__form label {
+  display: grid;
+  gap: 5px;
+}
+
+.manual-shift__form label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.manual-shift__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.manual-shift__form p {
+  color: var(--danger);
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+@media (max-width: 980px) {
+  .manual-shift__form {
+    grid-template-columns: 1fr;
+  }
+}
+
 .assignment-persistence {
   align-items: center;
   background: var(--surface-alt);

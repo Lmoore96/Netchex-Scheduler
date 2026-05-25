@@ -30,6 +30,19 @@ export interface Shift {
   sourceNotes?: string;
 }
 
+
+export interface ManualShiftInput {
+  employeeName: string;
+  shiftDate: string;
+  startTime: string;
+  endTime: string;
+  departmentLabel: string;
+}
+
+export interface ManualShiftRequest extends ManualShiftInput {
+  scheduleImportId: string;
+}
+
 export interface Department {
   id: string;
   name: string;

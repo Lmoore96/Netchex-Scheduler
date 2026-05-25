@@ -4,6 +4,7 @@ import type {
   AssignmentPlanRequest,
   ParsedScheduleDraft,
   PositionDefinition,
+  ManualShiftRequest,
   RotationPlanRequest
 } from "../../../src/domain/types";
 
@@ -52,6 +53,13 @@ export function createSupabaseRepository() {
 
       if (error) throw error;
       return { deleted: true };
+    },
+
+    async addManualShift(shift: ManualShiftRequest) {
+      const { data, error } = await supabase.rpc("add_manual_shift", { shift_data: shift });
+
+      if (error) throw error;
+      return data;
     },
 
     async listPositionLists() {

@@ -4,12 +4,14 @@ import { AssignmentPersistenceActions, type PersistenceState } from "./component
 import { CalloutManager } from "./components/CalloutManager";
 import { DayDepartmentPicker } from "./components/DayDepartmentPicker";
 import { ImportPanel } from "./components/ImportPanel";
+import { ManualShiftForm } from "./components/ManualShiftForm";
 import { PositionListEditor } from "./components/PositionListEditor";
 import { PrintView } from "./components/PrintView";
 import { RotationBuilder } from "./components/RotationBuilder";
 import { Shell } from "./components/Shell";
-import type { Assignment, ParsedScheduleDraft, PositionDefinition, PositionList, SavedScheduleSummary, Shift } from "./domain/types";
+import type { Assignment, ManualShiftInput, ParsedScheduleDraft, PositionDefinition, PositionList, SavedScheduleSummary, Shift } from "./domain/types";
 import {
+  addManualShift as addManualShiftRequest,
   confirmReviewedImport,
   deletePositionList as deletePositionListRequest,
   deleteSavedSchedule as deleteSavedScheduleRequest,
@@ -121,6 +123,8 @@ export function App() {
   const [isLoadingSavedSchedules, setIsLoadingSavedSchedules] = useState(false);
   const [isLoadingSavedSchedule, setIsLoadingSavedSchedule] = useState(false);
   const [assignmentSaveState, setAssignmentSaveState] = useState<PersistenceState>("idle");
+  const [manualShiftError, setManualShiftError] = useState("");
+  const [isSavingManualShift, setIsSavingManualShift] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -159,6 +163,9 @@ export function App() {
     () => activeShifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel)),
     [activeShifts]
   );
+  const allDates = useMemo(() => uniqueSorted(shifts.map((shift) => shift.shiftDate)), [shifts]);
+  const allDepartments = useMemo(() => uniqueSorted(shifts.map((shift) => shift.departmentLabel)), [shifts]);
+  const currentScheduleImportId = shifts[0]?.scheduleImportId ?? "";
   const dates = useMemo(() => uniqueSorted(positionShifts.map((shift) => shift.shiftDate)), [positionShifts]);
   const departments = useMemo(
     () => uniqueSorted(positionShifts.map((shift) => shift.departmentLabel)).map((name) => ({ id: name, name })),
@@ -172,6 +179,8 @@ export function App() {
   const selectedListId = selectedListIds[currentDepartmentId] || departmentLists[0]?.id || "";
   const selectedList = departmentLists.find((list) => list.id === selectedListId) ?? departmentLists[0];
   const selectedPositions = selectedList?.positions ?? starterPositions;
+  const defaultManualDate = allDates.includes(currentDate) ? currentDate : allDates[0] ?? "";
+  const defaultManualDepartment = allDepartments.includes(currentDepartment) ? currentDepartment : allDepartments[0] ?? "";
 
   const visibleShifts = useMemo(
     () => positionShifts.filter((shift) => shift.departmentLabel === currentDepartment && shift.shiftDate === currentDate),
@@ -303,6 +312,38 @@ export function App() {
       setAssignmentSaveState("loaded");
     } catch {
       setAssignmentSaveState("error");
+    }
+  }
+
+  async function addManualShift(input: ManualShiftInput) {
+    if (!currentScheduleImportId) return;
+
+    setManualShiftError("");
+    setIsSavingManualShift(true);
+    try {
+      const savedShift = await addManualShiftRequest({
+        scheduleImportId: currentScheduleImportId,
+        ...input
+      });
+      setShifts((current) => [...current, savedShift]);
+      if (!isLifeguardRotationDepartment(savedShift.departmentLabel)) {
+        const nextDepartmentId = departmentIdFromName(savedShift.departmentLabel);
+        const nextPositionLists = withDefaultLists(positionLists, [savedShift.departmentLabel]);
+        setPositionLists(nextPositionLists);
+        setSelectedListIds((current) => ({
+          ...current,
+          ...selectedListIdsForDepartments(nextPositionLists, [savedShift.departmentLabel])
+        }));
+        setSelectedDate(savedShift.shiftDate);
+        setSelectedDepartment(savedShift.departmentLabel);
+        if (!selectedListIds[nextDepartmentId]) {
+          setAssignmentSaveState("idle");
+        }
+      }
+    } catch (caught) {
+      setManualShiftError(caught instanceof Error ? caught.message : "Manual shift could not be saved");
+    } finally {
+      setIsSavingManualShift(false);
     }
   }
 
@@ -439,7 +480,18 @@ export function App() {
       </nav>
 
       {shifts.length > 0 && view !== "import" ? (
-        <CalloutManager shifts={shifts} calloutShiftIds={calloutShiftIds} onToggleCallout={toggleCallout} />
+        <>
+          <ManualShiftForm
+            dates={allDates}
+            departments={allDepartments}
+            defaultDate={defaultManualDate}
+            defaultDepartment={defaultManualDepartment}
+            isSaving={isSavingManualShift}
+            onAdd={addManualShift}
+          />
+          {manualShiftError ? <p className="app-alert no-print" role="alert">{manualShiftError}</p> : null}
+          <CalloutManager shifts={shifts} calloutShiftIds={calloutShiftIds} onToggleCallout={toggleCallout} />
+        </>
       ) : null}
 
       {positionShifts.length > 0 && view !== "import" && view !== "rotations" ? (
