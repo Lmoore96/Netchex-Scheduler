@@ -1,5 +1,4 @@
 import type { Assignment, PositionDefinition, Shift } from "../domain/types";
-import { formatShiftRange } from "../lib/time";
 
 interface PrintViewProps {
   departmentName: string;
@@ -9,18 +8,6 @@ interface PrintViewProps {
   assignments: Assignment[];
 }
 
-function sortByOrder<T extends { sortOrder: number }>(items: T[]) {
-  return [...items].sort((first, second) => first.sortOrder - second.sortOrder);
-}
-
-function shiftFor(shifts: Shift[], shiftId: string) {
-  return shifts.find((shift) => shift.id === shiftId);
-}
-
-function shiftTime(shift: Shift) {
-  return formatShiftRange(shift.startTime, shift.endTime);
-}
-
 function formatEmployeeName(employeeName: string) {
   const trimmed = employeeName.trim().replace(/\s+/g, " ");
   const parts = trimmed.split(",");
@@ -28,7 +15,7 @@ function formatEmployeeName(employeeName: string) {
   if (parts.length > 1) {
     const lastName = parts[0].trim();
     const firstName = parts.slice(1).join(",").trim();
-    if (firstName && lastName) return `${firstName} ${lastName}`;
+    if (firstName && lastName) return firstName + " " + lastName;
   }
 
   return trimmed;
@@ -36,14 +23,16 @@ function formatEmployeeName(employeeName: string) {
 
 export function PrintView({ departmentName, date, positions, shifts, assignments }: PrintViewProps) {
   const visibleShiftIds = new Set(shifts.map((shift) => shift.id));
-  const assignedShiftIds = new Set(
+  const positionLabels = new Map(positions.map((position) => [position.key, position.label]));
+  const assignmentsByShiftId = new Map(
     assignments
       .filter((assignment) => visibleShiftIds.has(assignment.shiftId))
-      .map((assignment) => assignment.shiftId)
+      .sort((first, second) => first.sortOrder - second.sortOrder)
+      .map((assignment) => [assignment.shiftId, assignment])
   );
 
   return (
-    <section className="print-sheet" aria-label={`${departmentName} print sheet`}>
+    <section className="print-sheet" aria-label={departmentName + " print sheet"}>
       <header className="print-sheet__header">
         <div>
           <h1>{departmentName}</h1>
@@ -54,49 +43,42 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
         </button>
       </header>
 
-      {sortByOrder(positions).map((position) => {
-        const positionAssignments = sortByOrder(
-          assignments.filter(
-            (assignment) =>
-              assignment.positionKey === position.key && visibleShiftIds.has(assignment.shiftId)
-          )
-        );
+      <table className="print-sign-table" aria-label={departmentName + " sign-in sheet"}>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Position</th>
+            <th scope="col">Time in</th>
+            <th scope="col">Lunch out</th>
+            <th scope="col">Lunch in</th>
+            <th scope="col">Day out</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shifts.length > 0 ? (
+            shifts.map((shift) => {
+              const assignment = assignmentsByShiftId.get(shift.id);
+              const positionLabel = assignment ? positionLabels.get(assignment.positionKey) ?? assignment.positionKey : "";
+              const employeeName = formatEmployeeName(shift.employeeName);
 
-        return (
-          <section className="print-position" key={position.key}>
-            <h2>{position.label}</h2>
-            {positionAssignments.length > 0 ? (
-              <ul>
-                {positionAssignments.map((assignment) => {
-                  const shift = shiftFor(shifts, assignment.shiftId);
-                  return (
-                    <li key={assignment.shiftId}>
-                      <strong>{shift ? formatEmployeeName(shift.employeeName) : "Unknown employee"}</strong>
-                      {shift ? <span>{shiftTime(shift)}</span> : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p>Open</p>
-            )}
-          </section>
-        );
-      })}
-
-      <section className="print-position">
-        <h2>Unassigned</h2>
-        <ul>
-          {shifts
-            .filter((shift) => !assignedShiftIds.has(shift.id))
-            .map((shift) => (
-              <li key={shift.id}>
-                <strong>{formatEmployeeName(shift.employeeName)}</strong>
-                <span>{shiftTime(shift)}</span>
-              </li>
-            ))}
-        </ul>
-      </section>
+              return (
+                <tr key={shift.id}>
+                  <td>{employeeName}</td>
+                  <td>{positionLabel}</td>
+                  <td aria-label={employeeName + " time in"} />
+                  <td aria-label={employeeName + " lunch out"} />
+                  <td aria-label={employeeName + " lunch in"} />
+                  <td aria-label={employeeName + " day out"} />
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan={6}>No scheduled employees</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </section>
   );
 }

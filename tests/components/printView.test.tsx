@@ -8,7 +8,7 @@ describe("PrintView", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows department, date, positions, assigned employees, and unassigned employees", () => {
+  it("prints a sign-in sheet with names, positions, and blank time columns", () => {
     render(
       <PrintView
         departmentName="Splash Crew"
@@ -52,10 +52,18 @@ describe("PrintView", () => {
 
     expect(screen.getByText("Splash Crew")).toBeInTheDocument();
     expect(screen.getByText("2026-05-22")).toBeInTheDocument();
-    expect(screen.getByText("Tower 1")).toBeInTheDocument();
-    expect(screen.getByText("MAI AL-RAJAI")).toBeInTheDocument();
-    expect(screen.getByText("Unassigned")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Splash Crew sign-in sheet" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Position" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Time in" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Lunch out" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Lunch in" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Day out" })).toBeInTheDocument();
+
+    const assignedRow = screen.getByText("MAI AL-RAJAI").closest("tr");
+    expect(assignedRow).toHaveTextContent("Tower 1");
     expect(screen.getByText("ERIN ASH")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Unassigned" })).not.toBeInTheDocument();
   });
   it("lets managers print the crew list", async () => {
     const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
