@@ -65,6 +65,50 @@ describe("PrintView", () => {
     expect(screen.getByText("ERIN ASH")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Unassigned" })).not.toBeInTheDocument();
   });
+
+  it("can switch to a simple names and positions sheet", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PrintView
+        departmentName="Splash Crew"
+        date="2026-05-22"
+        positions={[{ key: "tower-1", label: "Tower 1", sortOrder: 0, capacityMode: "single" }]}
+        shifts={[
+          {
+            id: "shift-1",
+            scheduleImportId: "import-1",
+            employeeId: "employee-1",
+            employeeName: "AL-RAJAI, MAI",
+            shiftDate: "2026-05-22",
+            startTime: "10:00",
+            endTime: "18:00",
+            departmentLabel: "Splash Crew",
+            sourceConfidence: "high"
+          }
+        ]}
+        assignments={[
+          {
+            id: "assignment-1",
+            dailyPositionPlanId: "plan-1",
+            shiftId: "shift-1",
+            positionKey: "tower-1",
+            sortOrder: 0
+          }
+        ]}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Simple list" }));
+
+    expect(screen.getByRole("table", { name: "Splash Crew simple position list" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Position" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Time in" })).not.toBeInTheDocument();
+
+    const assignedRow = screen.getByText("MAI AL-RAJAI").closest("tr");
+    expect(assignedRow).toHaveTextContent("Tower 1");
+  });
   it("lets managers print the crew list", async () => {
     const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
     const user = userEvent.setup();

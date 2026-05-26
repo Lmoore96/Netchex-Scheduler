@@ -614,6 +614,38 @@ button:focus-visible {
   margin: 0;
 }
 
+.print-sheet__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.print-sheet__mode-toggle {
+  align-items: center;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.print-sheet__mode-toggle button {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  min-width: 118px;
+}
+
+.print-sheet__mode-toggle button.is-active {
+  background: #ffffff;
+  border-color: var(--line);
+  color: var(--text);
+  box-shadow: 0 6px 16px rgba(33, 53, 71, 0.08);
+}
+
 .print-sign-table {
   border-collapse: collapse;
   table-layout: fixed;
@@ -649,6 +681,19 @@ button:focus-visible {
 .print-sign-table th:nth-child(n + 3),
 .print-sign-table td:nth-child(n + 3) {
   width: 13%;
+}
+
+.print-sign-table--simple th,
+.print-sign-table--simple td {
+  font-size: 16px;
+  height: 38px;
+}
+
+.print-sign-table--simple th:nth-child(1),
+.print-sign-table--simple td:nth-child(1),
+.print-sign-table--simple th:nth-child(2),
+.print-sign-table--simple td:nth-child(2) {
+  width: 50%;
 }
 
 @media (max-width: 760px) {
