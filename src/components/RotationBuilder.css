@@ -312,6 +312,101 @@
   font-size: 12px;
 }
 
+.rotation-print-handout {
+  display: grid;
+  gap: 26px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 26px 8px;
+}
+
+.rotation-print-handout__card {
+  background: #ffffff;
+  min-width: 0;
+}
+
+.rotation-print-handout__card h3 {
+  color: #000000;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.08;
+  margin: 0;
+  padding: 8px 10px;
+}
+
+.rotation-print-handout__card--orange h3 {
+  background: #f59e0b;
+}
+
+.rotation-print-handout__card--cyan h3 {
+  background: #67e8f9;
+}
+
+.rotation-print-handout__card--green h3 {
+  background: #65ef3d;
+}
+
+.rotation-print-handout__card ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rotation-print-handout__card li {
+  color: #000000;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.08;
+  padding: 6px 4px;
+  text-align: center;
+}
+
+.rotation-print-handout__card--orange li:nth-child(-n + 5) {
+  color: #ef372b;
+}
+
+.rotation-print-handout__card--cyan li:nth-child(-n + 6),
+.rotation-print-handout__card--green li:nth-child(-n + 6) {
+  color: #5b86dc;
+}
+
+.rotation-break-sheet {
+  overflow-x: auto;
+}
+
+.rotation-break-sheet table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.rotation-break-sheet th,
+.rotation-break-sheet td {
+  border: 1px solid #111111;
+  color: #000000;
+  font-size: 11px;
+  height: 28px;
+  line-height: 1.05;
+  padding: 3px 4px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.rotation-break-sheet th {
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.rotation-break-sheet th:first-child,
+.rotation-break-sheet td:first-child {
+  width: 14%;
+}
+
+.rotation-break-sheet th:not(:first-child),
+.rotation-break-sheet td:not(:first-child) {
+  width: 9.55%;
+}
+
 @media (max-width: 1080px) {
   .rotation-builder__grid {
     grid-template-columns: 1fr;
@@ -349,6 +444,38 @@
 }
 
 @media print {
+  .rotation-print-handout {
+    gap: 18px;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 8px 0 0;
+  }
+
+  .rotation-print-handout__card h3 {
+    font-size: 18px;
+    padding: 6px 7px;
+  }
+
+  .rotation-print-handout__card li {
+    font-size: 16px;
+    padding: 3px 2px;
+  }
+
+  .rotation-break-sheet {
+    overflow: visible;
+  }
+
+  .rotation-break-sheet th,
+  .rotation-break-sheet td {
+    font-size: 7px;
+    height: 18px;
+    padding: 2px;
+  }
+
+  .rotation-break-sheet th {
+    font-size: 8px;
+    white-space: normal;
+  }
+
   .rotation-builder {
     border: 0;
     box-shadow: none;

@@ -54,7 +54,38 @@ describe("RotationBuilder persistence", () => {
   });
 
   afterEach(() => {
+    window.localStorage.clear();
     vi.unstubAllGlobals();
+  });
+
+
+  it("prints a rotation handout without employee names", async () => {
+    const user = userEvent.setup();
+    render(<RotationBuilder shifts={shifts} />);
+
+    await user.selectOptions(screen.getByLabelText("Print layout"), "handout");
+
+    expect(screen.getByRole("region", { name: "Daily rotation handout" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Special Facilities (Red Shorts)" })).toBeInTheDocument();
+    expect(screen.getByText("Top of Blaster")).toBeInTheDocument();
+    expect(screen.queryByText("ALEX SMITH")).not.toBeInTheDocument();
+    expect(screen.queryByText("TAYLOR JONES")).not.toBeInTheDocument();
+  });
+
+  it("prints a break sheet with employee names and starting positions", async () => {
+    const user = userEvent.setup();
+    render(<RotationBuilder shifts={shifts} />);
+
+    await user.selectOptions(screen.getByLabelText("Top of Blaster"), "shift-special");
+    await user.selectOptions(screen.getByLabelText("Print layout"), "break-sheet");
+
+    expect(screen.getByRole("table", { name: "Lifeguard break sheet" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Employee Name" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Loc B4 Break 1" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Brk 3 End Time" })).toBeInTheDocument();
+
+    const assignedRow = screen.getByText("ALEX SMITH").closest("tr");
+    expect(assignedRow).toHaveTextContent("Top of Blaster");
   });
 
   it("saves the current rotation plan", async () => {

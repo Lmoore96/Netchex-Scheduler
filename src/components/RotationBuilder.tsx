@@ -8,6 +8,7 @@ import "./RotationBuilder.css";
 type RotationKind = "special" | "shallow";
 type RotationTone = "orange" | "cyan" | "green";
 type SupportRole = "captains" | "slideAttendants";
+type RotationPrintLayout = "assigned" | "handout" | "break-sheet";
 
 interface RotationPosition {
   id: string;
@@ -130,6 +131,11 @@ function employeeOptionLabel(shift: Shift) {
   return formatEmployeeName(shift.employeeName);
 }
 
+function handoutTitle(rotation: RotationDefinition) {
+  if (rotation.kind === "shallow") return rotation.subtitle ? `Shallow (${rotation.subtitle})` : "Shallow";
+  return rotation.subtitle ? `${rotation.title} (${rotation.subtitle})` : rotation.title;
+}
+
 function eligibleShifts(rotation: RotationDefinition, shifts: Shift[]) {
   if (rotation.kind === "special") {
     return shifts.filter(isSpecialFacilitiesShift);
@@ -228,6 +234,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
   const [isSupportCollapsed, setIsSupportCollapsed] = useState(false);
   const [rotationSaveState, setRotationSaveState] = useState<PersistenceState>("idle");
+  const [printLayout, setPrintLayout] = useState<RotationPrintLayout>("assigned");
 
   useEffect(() => {
     if (!selectedDate && dates[0]) {
@@ -285,6 +292,19 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
   const slideAttendantOptions = dateShifts.filter(
     (shift) => isShallowShift(shift) && !supportShiftIds.has(shift.id) && !assignedShiftIds.has(shift.id)
   );
+  const startingPositionsByShiftId = useMemo(() => {
+    const next = new Map<string, string>();
+
+    Object.entries(assignments).forEach(([key, shiftId]) => {
+      if (!shiftId || next.has(shiftId)) return;
+      const [rotationId, positionId] = key.split(":");
+      const rotation = rotationTemplates.find((candidate) => candidate.id === rotationId);
+      const position = rotation?.positions.find((candidate) => candidate.id === positionId);
+      if (position) next.set(shiftId, position.label);
+    });
+
+    return next;
+  }, [assignments, rotationTemplates]);
 
   function selectDate(date: string) {
     setSelectedDate(date);
@@ -538,6 +558,14 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
               Reset default
             </button>
           ) : null}
+          <label>
+            <span>Print layout</span>
+            <select value={printLayout} onChange={(event) => setPrintLayout(event.target.value as RotationPrintLayout)}>
+              <option value="assigned">Assigned Rotations</option>
+              <option value="handout">Rotation Handout</option>
+              <option value="break-sheet">Break Sheet</option>
+            </select>
+          </label>
           <button type="button" onClick={() => window.print()} disabled={dateShifts.length === 0}>
             Print rotations
           </button>
@@ -556,6 +584,58 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
             </p>
           ) : null}
 
+          {printLayout === "handout" ? (
+            <section className="rotation-print-handout" aria-label="Daily rotation handout">
+              {rotationTemplates.map((rotation) => (
+                <section key={rotation.id} className={`rotation-print-handout__card rotation-print-handout__card--${rotation.tone}`}>
+                  <h3>{handoutTitle(rotation)}</h3>
+                  <ol>
+                    {rotation.positions.map((position) => (
+                      <li key={position.id} className={position.label.toLowerCase().includes("break") ? "is-break" : undefined}>
+                        {position.label}
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              ))}
+            </section>
+          ) : printLayout === "break-sheet" ? (
+            <section className="rotation-break-sheet">
+              <table aria-label="Lifeguard break sheet">
+                <thead>
+                  <tr>
+                    <th scope="col">Employee Name</th>
+                    <th scope="col">Loc B4 Break 1</th>
+                    <th scope="col">Brk 1 Start Time</th>
+                    <th scope="col">Brk 1 End Time</th>
+                    <th scope="col">Loc B4 Break 2</th>
+                    <th scope="col">Brk 2 Start Time</th>
+                    <th scope="col">Brk 2 End Time</th>
+                    <th scope="col">Loc B4 Break 3</th>
+                    <th scope="col">Brk 3 Start Time</th>
+                    <th scope="col">Brk 3 End Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dateShifts.map((shift) => (
+                    <tr key={shift.id}>
+                      <td>{formatEmployeeName(shift.employeeName)}</td>
+                      <td>{startingPositionsByShiftId.get(shift.id) || ""}</td>
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ) : (
+            <>
           <div className="rotation-builder__counts" aria-label="Scheduled lifeguard counts">
             <span>{specialCount} Special Facilities</span>
             <span>{shallowCount} Shallow</span>
@@ -614,7 +694,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
                     return (
                       <label key={key} className="rotation-row">
                         <span className="rotation-row__position">{position.label}</span>
-                        <select value={currentShiftId} onChange={(event) => selectAssignment(key, event.target.value)}>
+                        <select aria-label={position.label} value={currentShiftId} onChange={(event) => selectAssignment(key, event.target.value)}>
                           <option value="">Open</option>
                           {options.map((shift) => (
                             <option key={shift.id} value={shift.id}>
@@ -680,6 +760,8 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
               <p>Everyone scheduled for this rotation group has been assigned.</p>
             )}
           </section>
+            </>
+          )}
         </>
       )}
     </section>
