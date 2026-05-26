@@ -66,7 +66,7 @@ describe("PrintView", () => {
     expect(screen.queryByRole("heading", { name: "Unassigned" })).not.toBeInTheDocument();
   });
 
-  it("can switch to a simple names and positions sheet", async () => {
+  it("can switch to a large posting list grouped by position", async () => {
     const user = userEvent.setup();
 
     render(
@@ -85,6 +85,17 @@ describe("PrintView", () => {
             endTime: "18:00",
             departmentLabel: "Splash Crew",
             sourceConfidence: "high"
+          },
+          {
+            id: "shift-2",
+            scheduleImportId: "import-1",
+            employeeId: "employee-2",
+            employeeName: "ASH, ERIN",
+            shiftDate: "2026-05-22",
+            startTime: "09:30",
+            endTime: "18:30",
+            departmentLabel: "Splash Crew",
+            sourceConfidence: "high"
           }
         ]}
         assignments={[
@@ -101,13 +112,12 @@ describe("PrintView", () => {
 
     await user.click(screen.getByRole("button", { name: "Simple list" }));
 
-    expect(screen.getByRole("table", { name: "Splash Crew simple position list" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Position" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Splash Crew simple posting list" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tower 1" })).toBeInTheDocument();
+    expect(screen.getByText("MAI AL-RAJAI")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Unassigned" })).toBeInTheDocument();
+    expect(screen.getByText("ERIN ASH")).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Time in" })).not.toBeInTheDocument();
-
-    const assignedRow = screen.getByText("MAI AL-RAJAI").closest("tr");
-    expect(assignedRow).toHaveTextContent("Tower 1");
   });
   it("lets managers print the crew list", async () => {
     const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);

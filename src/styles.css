@@ -683,17 +683,56 @@ button:focus-visible {
   width: 13%;
 }
 
-.print-sign-table--simple th,
-.print-sign-table--simple td {
-  font-size: 16px;
-  height: 38px;
+.print-simple-list {
+  display: grid;
+  gap: 16px;
 }
 
-.print-sign-table--simple th:nth-child(1),
-.print-sign-table--simple td:nth-child(1),
-.print-sign-table--simple th:nth-child(2),
-.print-sign-table--simple td:nth-child(2) {
-  width: 50%;
+.print-simple-list__position {
+  border: 2px solid #111111;
+  display: grid;
+  grid-template-columns: minmax(220px, 34%) 1fr;
+  min-height: 72px;
+}
+
+.print-simple-list__position h2 {
+  align-items: center;
+  background: #f2f2f2;
+  border-right: 2px solid #111111;
+  display: flex;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.05;
+  margin: 0;
+  padding: 16px;
+}
+
+.print-simple-list__position ul {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 14px 18px;
+}
+
+.print-simple-list__position li {
+  align-items: center;
+  display: flex;
+  min-height: 38px;
+}
+
+.print-simple-list__position strong {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.print-simple-list__position p {
+  align-self: center;
+  color: #555555;
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+  padding: 16px 18px;
 }
 
 @media (max-width: 760px) {
@@ -865,6 +904,32 @@ button:focus-visible {
     font-size: 11px;
     height: 26px;
     padding: 3px 5px;
+  }
+
+  .print-simple-list {
+    gap: 10px;
+  }
+
+  .print-simple-list__position {
+    min-height: 58px;
+  }
+
+  .print-simple-list__position h2 {
+    font-size: 22px;
+    padding: 10px 12px;
+  }
+
+  .print-simple-list__position ul {
+    gap: 4px;
+    padding: 8px 12px;
+  }
+
+  .print-simple-list__position li {
+    min-height: 28px;
+  }
+
+  .print-simple-list__position strong {
+    font-size: 20px;
   }
 }
 

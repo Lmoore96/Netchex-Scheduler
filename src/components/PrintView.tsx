@@ -45,6 +45,24 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
       positionLabel
     };
   });
+  const shiftsById = new Map(shifts.map((shift) => [shift.id, shift]));
+  const visibleAssignments = assignments
+    .filter((assignment) => visibleShiftIds.has(assignment.shiftId))
+    .sort((first, second) => first.sortOrder - second.sortOrder);
+  const assignedShiftIds = new Set(visibleAssignments.map((assignment) => assignment.shiftId));
+  const simpleSections = [...positions]
+    .sort((first, second) => first.sortOrder - second.sortOrder)
+    .map((position) => ({
+      position,
+      rows: visibleAssignments
+        .filter((assignment) => assignment.positionKey === position.key)
+        .map((assignment) => {
+          const shift = shiftsById.get(assignment.shiftId);
+          return shift ? { employeeName: formatEmployeeName(shift.employeeName), id: shift.id } : null;
+        })
+        .filter((row): row is { employeeName: string; id: string } => row !== null)
+    }));
+  const unassignedRows = rows.filter((row) => !assignedShiftIds.has(row.id));
 
   return (
     <section className="print-sheet" aria-label={departmentName + " print sheet"}>
@@ -110,28 +128,39 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
           </tbody>
         </table>
       ) : (
-        <table className="print-sign-table print-sign-table--simple" aria-label={departmentName + " simple position list"}>
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Position</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length > 0 ? (
-              rows.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.employeeName}</td>
-                  <td>{row.positionLabel}</td>
-                </tr>
-              ))
+        <section className="print-simple-list" aria-label={departmentName + " simple posting list"}>
+          {simpleSections.map(({ position, rows: positionRows }) => (
+            <section className="print-simple-list__position" key={position.key}>
+              <h2>{position.label}</h2>
+              {positionRows.length > 0 ? (
+                <ul>
+                  {positionRows.map((row) => (
+                    <li key={row.id}>
+                      <strong>{row.employeeName}</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>Open</p>
+              )}
+            </section>
+          ))}
+
+          <section className="print-simple-list__position">
+            <h2>Unassigned</h2>
+            {unassignedRows.length > 0 ? (
+              <ul>
+                {unassignedRows.map((row) => (
+                  <li key={row.id}>
+                    <strong>{row.employeeName}</strong>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <tr>
-                <td colSpan={2}>No scheduled employees</td>
-              </tr>
+              <p>None</p>
             )}
-          </tbody>
-        </table>
+          </section>
+        </section>
       )}
     </section>
   );
