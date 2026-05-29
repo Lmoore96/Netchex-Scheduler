@@ -444,6 +444,15 @@
 }
 
 @media print {
+  @page lifeguard-break-sheet {
+    size: letter landscape;
+    margin: 0.25in;
+  }
+
+  .rotation-builder--print-break-sheet {
+    page: lifeguard-break-sheet;
+  }
+
   .rotation-print-handout {
     gap: 18px;
     grid-template-columns: repeat(3, 1fr);
@@ -466,13 +475,13 @@
 
   .rotation-break-sheet th,
   .rotation-break-sheet td {
-    font-size: 7px;
-    height: 18px;
-    padding: 2px;
+    font-size: 10px;
+    height: 28px;
+    padding: 3px 4px;
   }
 
   .rotation-break-sheet th {
-    font-size: 8px;
+    font-size: 11px;
     white-space: normal;
   }
 

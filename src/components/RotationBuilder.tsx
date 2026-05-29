@@ -533,7 +533,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
   }
 
   return (
-    <section className="panel rotation-builder">
+    <section className={`panel rotation-builder rotation-builder--print-${printLayout}`}>
       <div className="section-heading rotation-builder__heading">
         <div>
           <h2>Lifeguard Rotations</h2>
