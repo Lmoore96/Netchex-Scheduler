@@ -305,6 +305,18 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
 
     return next;
   }, [assignments, rotationTemplates]);
+  const breakSheetRows = useMemo(
+    () =>
+      [...dateShifts]
+        .map((shift) => ({
+          employeeName: formatEmployeeName(shift.employeeName),
+          id: shift.id,
+          startingPosition: startingPositionsByShiftId.get(shift.id) || ""
+        }))
+        .sort((first, second) => first.employeeName.localeCompare(second.employeeName)),
+    [dateShifts, startingPositionsByShiftId]
+  );
+  const breakSheetBlankRows = Array.from({ length: 8 }, (_, index) => index);
 
   function selectDate(date: string) {
     setSelectedDate(date);
@@ -617,10 +629,24 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {dateShifts.map((shift) => (
-                    <tr key={shift.id}>
-                      <td>{formatEmployeeName(shift.employeeName)}</td>
-                      <td>{startingPositionsByShiftId.get(shift.id) || ""}</td>
+                  {breakSheetRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.employeeName}</td>
+                      <td>{row.startingPosition}</td>
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                    </tr>
+                  ))}
+                  {breakSheetBlankRows.map((rowIndex) => (
+                    <tr key={`blank-${rowIndex}`} aria-label={`Blank break sheet row ${rowIndex + 1}`}>
+                      <td />
+                      <td />
                       <td />
                       <td />
                       <td />
