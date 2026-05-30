@@ -63,6 +63,7 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
         .filter((row): row is { employeeName: string; id: string } => row !== null)
     }));
   const unassignedRows = rows.filter((row) => !assignedShiftIds.has(row.id));
+  const signInBlankRows = Array.from({ length: 6 }, (_, index) => index);
 
   return (
     <section className="print-sheet" aria-label={departmentName + " print sheet"}>
@@ -125,6 +126,16 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
                 <td colSpan={6}>No scheduled employees</td>
               </tr>
             )}
+            {signInBlankRows.map((rowIndex) => (
+              <tr key={`blank-${rowIndex}`} aria-label={`Blank sign-in row ${rowIndex + 1}`}>
+                <td />
+                <td />
+                <td />
+                <td />
+                <td />
+                <td />
+              </tr>
+            ))}
           </tbody>
         </table>
       ) : (
