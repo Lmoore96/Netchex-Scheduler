@@ -16,6 +16,14 @@ function requireEnv(name: string): string {
   return value;
 }
 
+function dbDate(value: unknown) {
+  return String(value).slice(0, 10);
+}
+
+function dbTime(value: unknown) {
+  return String(value).slice(0, 5);
+}
+
 export function createSupabaseRepository() {
   const supabase = createClient(
     requireEnv("SUPABASE_URL"),
@@ -56,10 +64,56 @@ export function createSupabaseRepository() {
     },
 
     async addManualShift(shift: ManualShiftRequest) {
-      const { data, error } = await supabase.rpc("add_manual_shift", { shift_data: shift });
+      const employeeName = shift.employeeName.trim();
+      const departmentLabel = shift.departmentLabel.trim();
 
-      if (error) throw error;
-      return data;
+      const { data: employee, error: employeeError } = await supabase
+        .from("employees")
+        .upsert({ display_name: employeeName }, { onConflict: "display_name" })
+        .select("id, display_name")
+        .single();
+
+      if (employeeError) throw employeeError;
+
+      const { data: department, error: departmentError } = await supabase
+        .from("departments")
+        .upsert({ name: departmentLabel }, { onConflict: "name" })
+        .select("id")
+        .single();
+
+      if (departmentError) throw departmentError;
+
+      const { data: savedShift, error: shiftError } = await supabase
+        .from("shifts")
+        .insert({
+          schedule_import_id: shift.scheduleImportId,
+          employee_id: employee.id,
+          shift_date: shift.shiftDate,
+          start_time: shift.startTime,
+          end_time: shift.endTime,
+          department_label: departmentLabel,
+          normalized_department_id: department.id,
+          source_confidence: "high",
+          source_notes: "Manually added"
+        })
+        .select("id, schedule_import_id, employee_id, shift_date, start_time, end_time, department_label, normalized_department_id, source_confidence, source_notes")
+        .single();
+
+      if (shiftError) throw shiftError;
+
+      return {
+        id: String(savedShift.id),
+        scheduleImportId: String(savedShift.schedule_import_id),
+        employeeId: String(savedShift.employee_id),
+        employeeName: String(employee.display_name),
+        shiftDate: dbDate(savedShift.shift_date),
+        startTime: dbTime(savedShift.start_time),
+        endTime: dbTime(savedShift.end_time),
+        departmentLabel: String(savedShift.department_label),
+        normalizedDepartmentId: savedShift.normalized_department_id ? String(savedShift.normalized_department_id) : undefined,
+        sourceConfidence: savedShift.source_confidence,
+        sourceNotes: savedShift.source_notes ?? undefined
+      };
     },
 
     async listPositionLists() {
