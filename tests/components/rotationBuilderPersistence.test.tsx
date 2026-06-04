@@ -107,7 +107,8 @@ describe("RotationBuilder persistence", () => {
     const user = userEvent.setup();
     render(<RotationBuilder shifts={shifts} />);
 
-    await user.click(screen.getByRole("button", { name: "Save rotations" }));
+    const headerActions = screen.getByLabelText("Header actions");
+    await user.click(within(headerActions).getByRole("button", { name: "Save rotations" }));
 
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(
       "/.netlify/functions/rotation-plans",

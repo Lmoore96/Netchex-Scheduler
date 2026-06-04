@@ -72,6 +72,18 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.button-primary {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #ffffff;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--teal-dark);
+  border-color: var(--teal-dark);
+  color: #ffffff;
+}
+
 input,
 select,
 textarea {
@@ -209,6 +221,19 @@ button:focus-visible {
   padding-bottom: 16px;
 }
 
+.section-heading__actions,
+.header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.section-heading__actions {
+  max-width: 560px;
+}
+
 .section-heading h2 {
   font-size: 24px;
   line-height: 1.2;
@@ -336,6 +361,11 @@ button:focus-visible {
 .position-list-editor__status {
   margin: 0;
   white-space: nowrap;
+}
+
+.position-list-editor__header-actions {
+  align-items: flex-start;
+  min-height: 40px;
 }
 
 .position-list-editor__status--dirty {
@@ -851,15 +881,15 @@ button:focus-visible {
 
 .assignment-persistence {
   align-items: center;
-  background: var(--surface-alt);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  justify-content: space-between;
-  margin: 12px 0;
-  padding: 10px;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0;
 }
 
 .assignment-persistence__actions {
@@ -873,6 +903,8 @@ button:focus-visible {
   font-size: 13px;
   font-weight: 800;
   margin: 0;
+  text-align: right;
+  width: 100%;
 }
 
 @media print {

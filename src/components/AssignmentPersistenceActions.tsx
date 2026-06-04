@@ -27,9 +27,9 @@ export function AssignmentPersistenceActions({
   const message = statusMessage(saveState);
 
   return (
-    <div className="assignment-persistence no-print">
+    <div className="header-actions assignment-persistence no-print" role="group" aria-label="Header actions">
       <div className="assignment-persistence__actions">
-        <button type="button" disabled={!canUse || isBusy} onClick={() => void onSave()}>
+        <button type="button" className="button-primary" disabled={!canUse || isBusy} onClick={() => void onSave()}>
           Save assignments
         </button>
         <button type="button" disabled={!canUse || isBusy} onClick={() => void onLoad()}>

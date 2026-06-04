@@ -556,12 +556,19 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
           <button type="button" onClick={clearAssignments} disabled={Object.keys(assignments).length === 0 || isEditingTemplate}>
             Clear
           </button>
-          <button type="button" onClick={() => void saveCurrentRotationPlan()} disabled={!currentScheduleImportId || isEditingTemplate}>
-            Save rotations
-          </button>
-          <button type="button" onClick={() => void loadCurrentRotationPlan()} disabled={!currentScheduleImportId || isEditingTemplate}>
-            Load saved rotations
-          </button>
+          <div className="rotation-builder__header-actions" role="group" aria-label="Header actions">
+            <button
+              type="button"
+              className="button-primary"
+              onClick={() => void saveCurrentRotationPlan()}
+              disabled={!currentScheduleImportId || isEditingTemplate}
+            >
+              Save rotations
+            </button>
+            <button type="button" onClick={() => void loadCurrentRotationPlan()} disabled={!currentScheduleImportId || isEditingTemplate}>
+              Load saved rotations
+            </button>
+          </div>
           <button type="button" onClick={() => setIsEditingTemplate((current) => !current)}>
             {isEditingTemplate ? "Done editing" : "Edit rotations"}
           </button>

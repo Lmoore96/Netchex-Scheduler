@@ -38,6 +38,13 @@
   justify-content: flex-end;
 }
 
+.rotation-builder__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .rotation-builder__toolbar label {
   display: grid;
   gap: 4px;

@@ -196,11 +196,28 @@ export function PositionListEditor({
           <h2 id="position-list-heading">{departmentName} positions</h2>
           <p>Choose a saved list, then edit it only when changes are needed.</p>
         </div>
-        {statusMessage ? (
-          <p className={`position-list-editor__status position-list-editor__status--${saveState}`} role="status">
-            {statusMessage}
-          </p>
-        ) : null}
+        <div className="header-actions position-list-editor__header-actions" role="group" aria-label="Header actions">
+          {statusMessage ? (
+            <p className={`position-list-editor__status position-list-editor__status--${saveState}`} role="status">
+              {statusMessage}
+            </p>
+          ) : null}
+          {isEditing ? (
+            <>
+              <button
+                type="button"
+                className="button-primary"
+                onClick={() => void saveList()}
+                disabled={saveState === "saving"}
+              >
+                {saveState === "saving" ? "Saving..." : "Save list"}
+              </button>
+              <button type="button" onClick={cancelEditing} disabled={saveState === "saving"}>
+                Cancel
+              </button>
+            </>
+          ) : null}
+        </div>
       </div>
 
       <div className="position-list-editor__summary">
@@ -324,14 +341,6 @@ export function PositionListEditor({
             <p className="position-list-editor__empty">No positions have been added yet.</p>
           )}
 
-          <div className="actions">
-            <button type="button" onClick={() => void saveList()} disabled={saveState === "saving"}>
-              {saveState === "saving" ? "Saving..." : "Save list"}
-            </button>
-            <button type="button" onClick={cancelEditing} disabled={saveState === "saving"}>
-              Cancel
-            </button>
-          </div>
         </div>
       ) : null}
     </section>

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AssignmentPersistenceActions } from "../../src/components/AssignmentPersistenceActions";
@@ -18,8 +18,9 @@ describe("AssignmentPersistenceActions", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Save assignments" }));
-    await user.click(screen.getByRole("button", { name: "Load saved assignments" }));
+    const headerActions = screen.getByLabelText("Header actions");
+    await user.click(within(headerActions).getByRole("button", { name: "Save assignments" }));
+    await user.click(within(headerActions).getByRole("button", { name: "Load saved assignments" }));
 
     expect(onSave).toHaveBeenCalledOnce();
     expect(onLoad).toHaveBeenCalledOnce();

@@ -544,14 +544,16 @@ export function App() {
               <h2>{currentDepartment} Assignments</h2>
               <p>{currentDate}</p>
             </div>
-            <span>{selectedList?.name ?? "Default list"}</span>
+            <div className="section-heading__actions">
+              <span>{selectedList?.name ?? "Default list"}</span>
+              <AssignmentPersistenceActions
+                canUse={visibleShifts.length > 0}
+                saveState={assignmentSaveState}
+                onSave={saveCurrentAssignments}
+                onLoad={loadCurrentAssignments}
+              />
+            </div>
           </div>
-          <AssignmentPersistenceActions
-            canUse={visibleShifts.length > 0}
-            saveState={assignmentSaveState}
-            onSave={saveCurrentAssignments}
-            onLoad={loadCurrentAssignments}
-          />
           <AssignmentBoard
             positions={selectedPositions}
             shifts={visibleShifts}
