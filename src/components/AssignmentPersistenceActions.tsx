@@ -1,3 +1,5 @@
+import { WorkflowActionsPortal } from "./WorkflowActionsPortal";
+
 export type PersistenceState = "idle" | "saving" | "saved" | "loading" | "loaded" | "empty" | "error";
 
 interface AssignmentPersistenceActionsProps {
@@ -26,7 +28,7 @@ export function AssignmentPersistenceActions({
   const isBusy = saveState === "saving" || saveState === "loading";
   const message = statusMessage(saveState);
 
-  return (
+  const actions = (
     <div className="header-actions assignment-persistence no-print" role="group" aria-label="Header actions">
       <div className="assignment-persistence__actions">
         <button type="button" className="button-primary" disabled={!canUse || isBusy} onClick={() => void onSave()}>
@@ -39,4 +41,6 @@ export function AssignmentPersistenceActions({
       {message ? <p role="status">{message}</p> : null}
     </div>
   );
+
+  return <WorkflowActionsPortal>{actions}</WorkflowActionsPortal>;
 }

@@ -3,6 +3,7 @@ import type { Shift } from "../domain/types";
 import { loadRotationPlan, saveRotationPlan } from "../lib/storageClient";
 import { formatShiftRange } from "../lib/time";
 import type { PersistenceState } from "./AssignmentPersistenceActions";
+import { WorkflowActionsPortal } from "./WorkflowActionsPortal";
 import "./RotationBuilder.css";
 
 type RotationKind = "special" | "shallow";
@@ -556,19 +557,6 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
           <button type="button" onClick={clearAssignments} disabled={Object.keys(assignments).length === 0 || isEditingTemplate}>
             Clear
           </button>
-          <div className="rotation-builder__header-actions" role="group" aria-label="Header actions">
-            <button
-              type="button"
-              className="button-primary"
-              onClick={() => void saveCurrentRotationPlan()}
-              disabled={!currentScheduleImportId || isEditingTemplate}
-            >
-              Save rotations
-            </button>
-            <button type="button" onClick={() => void loadCurrentRotationPlan()} disabled={!currentScheduleImportId || isEditingTemplate}>
-              Load saved rotations
-            </button>
-          </div>
           <button type="button" onClick={() => setIsEditingTemplate((current) => !current)}>
             {isEditingTemplate ? "Done editing" : "Edit rotations"}
           </button>
@@ -590,6 +578,22 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
           </button>
         </div>
       </div>
+
+      <WorkflowActionsPortal>
+        <div className="rotation-builder__header-actions" role="group" aria-label="Header actions">
+          <button
+            type="button"
+            className="button-primary"
+            onClick={() => void saveCurrentRotationPlan()}
+            disabled={!currentScheduleImportId || isEditingTemplate}
+          >
+            Save rotations
+          </button>
+          <button type="button" onClick={() => void loadCurrentRotationPlan()} disabled={!currentScheduleImportId || isEditingTemplate}>
+            Load saved rotations
+          </button>
+        </div>
+      </WorkflowActionsPortal>
 
       {dateShifts.length === 0 ? (
         <p className="app-alert" role="alert">

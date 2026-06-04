@@ -437,47 +437,50 @@ export function App() {
 
   return (
     <Shell>
-      <nav className="tabs no-print" aria-label="Workflow">
-        <button
-          type="button"
-          className={view === "import" ? "is-active" : undefined}
-          onClick={() => setView("import")}
-        >
-          Import
-        </button>
-        <button
-          type="button"
-          className={view === "positions" ? "is-active" : undefined}
-          onClick={() => setView("positions")}
-          disabled={positionShifts.length === 0}
-        >
-          Positions
-        </button>
-        <button
-          type="button"
-          className={view === "assign" ? "is-active" : undefined}
-          onClick={() => setView("assign")}
-          disabled={positionShifts.length === 0}
-        >
-          Assign
-        </button>
-        <button
-          type="button"
-          className={view === "rotations" ? "is-active" : undefined}
-          onClick={() => setView("rotations")}
-          disabled={rotationShifts.length === 0}
-        >
-          Rotations
-        </button>
-        <button
-          type="button"
-          className={view === "print" ? "is-active" : undefined}
-          onClick={() => setView("print")}
-          disabled={positionShifts.length === 0}
-        >
-          Print
-        </button>
-      </nav>
+      <div className="workflow-bar no-print">
+        <nav className="tabs" aria-label="Workflow">
+          <button
+            type="button"
+            className={view === "import" ? "is-active" : undefined}
+            onClick={() => setView("import")}
+          >
+            Import
+          </button>
+          <button
+            type="button"
+            className={view === "positions" ? "is-active" : undefined}
+            onClick={() => setView("positions")}
+            disabled={positionShifts.length === 0}
+          >
+            Positions
+          </button>
+          <button
+            type="button"
+            className={view === "assign" ? "is-active" : undefined}
+            onClick={() => setView("assign")}
+            disabled={positionShifts.length === 0}
+          >
+            Assign
+          </button>
+          <button
+            type="button"
+            className={view === "rotations" ? "is-active" : undefined}
+            onClick={() => setView("rotations")}
+            disabled={rotationShifts.length === 0}
+          >
+            Rotations
+          </button>
+          <button
+            type="button"
+            className={view === "print" ? "is-active" : undefined}
+            onClick={() => setView("print")}
+            disabled={positionShifts.length === 0}
+          >
+            Print
+          </button>
+        </nav>
+        <div className="workflow-bar__actions" id="workflow-actions-root" aria-label="Workflow actions" />
+      </div>
 
       {shifts.length > 0 && view !== "import" ? (
         <>
@@ -544,16 +547,14 @@ export function App() {
               <h2>{currentDepartment} Assignments</h2>
               <p>{currentDate}</p>
             </div>
-            <div className="section-heading__actions">
-              <span>{selectedList?.name ?? "Default list"}</span>
-              <AssignmentPersistenceActions
-                canUse={visibleShifts.length > 0}
-                saveState={assignmentSaveState}
-                onSave={saveCurrentAssignments}
-                onLoad={loadCurrentAssignments}
-              />
-            </div>
+            <span>{selectedList?.name ?? "Default list"}</span>
           </div>
+          <AssignmentPersistenceActions
+            canUse={visibleShifts.length > 0}
+            saveState={assignmentSaveState}
+            onSave={saveCurrentAssignments}
+            onLoad={loadCurrentAssignments}
+          />
           <AssignmentBoard
             positions={selectedPositions}
             shifts={visibleShifts}

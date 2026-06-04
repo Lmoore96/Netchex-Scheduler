@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { PositionDefinition, PositionList } from "../domain/types";
+import { WorkflowActionsPortal } from "./WorkflowActionsPortal";
 
 interface PositionListEditorProps {
   departmentName: string;
@@ -196,6 +197,9 @@ export function PositionListEditor({
           <h2 id="position-list-heading">{departmentName} positions</h2>
           <p>Choose a saved list, then edit it only when changes are needed.</p>
         </div>
+      </div>
+
+      <WorkflowActionsPortal>
         <div className="header-actions position-list-editor__header-actions" role="group" aria-label="Header actions">
           {statusMessage ? (
             <p className={`position-list-editor__status position-list-editor__status--${saveState}`} role="status">
@@ -218,7 +222,7 @@ export function PositionListEditor({
             </>
           ) : null}
         </div>
-      </div>
+      </WorkflowActionsPortal>
 
       <div className="position-list-editor__summary">
         {positionLists.length > 0 ? (

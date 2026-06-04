@@ -161,12 +161,28 @@ button:focus-visible {
   padding: 22px 24px 48px;
 }
 
+.workflow-bar {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin: 0 0 18px;
+}
+
+.workflow-bar__actions {
+  align-items: flex-start;
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  min-height: 40px;
+}
+
 .tabs {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 0 18px;
+  margin: 0;
 }
 
 .tabs button {
@@ -786,6 +802,16 @@ button:focus-visible {
   .tabs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workflow-bar {
+    flex-direction: column;
+  }
+
+  .workflow-bar__actions,
+  .workflow-bar__actions > * {
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .tabs button {

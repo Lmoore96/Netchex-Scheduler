@@ -1,8 +1,18 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RotationBuilder } from "../../src/components/RotationBuilder";
 import type { Shift } from "../../src/domain/types";
+
+function renderWithWorkflowActions(ui: ReactElement) {
+  return render(
+    <>
+      <div id="workflow-actions-root" aria-label="Workflow actions" />
+      {ui}
+    </>
+  );
+}
 
 const shifts: Shift[] = [
   {
@@ -72,7 +82,7 @@ describe("RotationBuilder persistence", () => {
 
   it("prints a rotation handout without employee names", async () => {
     const user = userEvent.setup();
-    render(<RotationBuilder shifts={shifts} />);
+    renderWithWorkflowActions(<RotationBuilder shifts={shifts} />);
 
     await user.selectOptions(screen.getByLabelText("Print layout"), "handout");
 
@@ -85,7 +95,7 @@ describe("RotationBuilder persistence", () => {
 
   it("prints a break sheet with employee names and starting positions", async () => {
     const user = userEvent.setup();
-    render(<RotationBuilder shifts={shifts} />);
+    renderWithWorkflowActions(<RotationBuilder shifts={shifts} />);
 
     await user.selectOptions(screen.getByLabelText("Top of Blaster"), "shift-special");
     await user.selectOptions(screen.getByLabelText("Print layout"), "break-sheet");
@@ -105,9 +115,10 @@ describe("RotationBuilder persistence", () => {
 
   it("saves the current rotation plan", async () => {
     const user = userEvent.setup();
-    render(<RotationBuilder shifts={shifts} />);
+    renderWithWorkflowActions(<RotationBuilder shifts={shifts} />);
 
-    const headerActions = screen.getByLabelText("Header actions");
+    const workflowActions = screen.getByLabelText("Workflow actions");
+    const headerActions = within(workflowActions).getByLabelText("Header actions");
     await user.click(within(headerActions).getByRole("button", { name: "Save rotations" }));
 
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(
