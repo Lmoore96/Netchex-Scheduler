@@ -74,9 +74,13 @@ function departmentIdFromName(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "department";
 }
 
-function isLifeguardRotationDepartment(departmentName: string) {
-  const normalized = departmentName.toLowerCase();
+function isLifeguardRotationText(value: string) {
+  const normalized = value.toLowerCase();
   return normalized.includes("shallow") || normalized.includes("special facilit");
+}
+
+function isLifeguardRotationShift(shift: Pick<Shift, "departmentLabel" | "sourceNotes">) {
+  return isLifeguardRotationText(`${shift.departmentLabel} ${shift.sourceNotes ?? ""}`);
 }
 
 function defaultListForDepartment(departmentName: string): PositionList {
@@ -176,7 +180,7 @@ export function App() {
     [calloutShiftIds, shifts]
   );
   const positionShifts = useMemo(
-    () => activeShifts.filter((shift) => !isLifeguardRotationDepartment(shift.departmentLabel)),
+    () => activeShifts.filter((shift) => !isLifeguardRotationShift(shift)),
     [activeShifts]
   );
 
@@ -203,7 +207,7 @@ export function App() {
     });
   }, [databaseConnected, positionShifts, positionLists]);
   const rotationShifts = useMemo(
-    () => activeShifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel)),
+    () => activeShifts.filter((shift) => isLifeguardRotationShift(shift)),
     [activeShifts]
   );
   const allDates = useMemo(() => uniqueSorted(shifts.map((shift) => shift.shiftDate)), [shifts]);
@@ -246,8 +250,8 @@ export function App() {
   }
 
   function loadShiftsIntoWorkspace(nextShifts: Shift[]) {
-    const nextPositionShifts = nextShifts.filter((shift) => !isLifeguardRotationDepartment(shift.departmentLabel));
-    const nextRotationShifts = nextShifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel));
+    const nextPositionShifts = nextShifts.filter((shift) => !isLifeguardRotationShift(shift));
+    const nextRotationShifts = nextShifts.filter((shift) => isLifeguardRotationShift(shift));
     const nextDepartments = uniqueSorted(nextPositionShifts.map((shift) => shift.departmentLabel));
     const nextDates = uniqueSorted(nextPositionShifts.map((shift) => shift.shiftDate));
     const nextPositionLists = withDefaultLists(positionLists, nextDepartments);
@@ -423,7 +427,7 @@ export function App() {
       const savedShift = databaseConnected ? await addManualShiftRequest(request) : addLocalManualShift(request);
       setShifts((current) => [...current, savedShift]);
       persistLocalWorkspace(calloutShiftIds, savedShift.scheduleImportId);
-      if (!isLifeguardRotationDepartment(savedShift.departmentLabel)) {
+      if (!isLifeguardRotationShift(savedShift)) {
         const nextDepartmentId = departmentIdFromName(savedShift.departmentLabel);
         const nextPositionLists = withDefaultLists(positionLists, [savedShift.departmentLabel]);
         setPositionLists(nextPositionLists);

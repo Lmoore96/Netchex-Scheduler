@@ -85,6 +85,23 @@ function dateRange(shifts: ParsedShiftDraft[]) {
   return { start: dates[0], end: dates[dates.length - 1] };
 }
 
+function departmentCodeFromPosition(positionName: string) {
+  const normalized = positionName.trim();
+  const match = /^([A-Za-z]{2})\b/.exec(normalized);
+  return match ? match[1].toUpperCase() : normalized;
+}
+
+function sourceNotesForRow(row: CsvRow) {
+  const notes = [];
+  const positionName = row["Position Name"].trim();
+  const positionId = row["Position ID"].trim();
+
+  if (positionName) notes.push(`WhenToWork position ${positionName}`);
+  if (positionId) notes.push(`position ID ${positionId}`);
+
+  return notes.length > 0 ? notes.join("; ") : undefined;
+}
+
 export function parseWhenToWorkCsv(csvText: string, sourceFileName: string): ParsedScheduleDraft {
   const rows = rowsFromCsv(csvText);
   let skippedBlankEmployees = 0;
@@ -102,9 +119,9 @@ export function parseWhenToWorkCsv(csvText: string, sourceFileName: string): Par
       shiftDate: parseDate(row.Date),
       startTime: parseTime(row["Start Time"]),
       endTime: parseTime(row["End Time"]),
-      departmentLabel: row["Position Name"],
+      departmentLabel: departmentCodeFromPosition(row["Position Name"]),
       sourceConfidence: "high",
-      sourceNotes: row["Position ID"] ? `WhenToWork position ${row["Position ID"]}` : undefined
+      sourceNotes: sourceNotesForRow(row)
     }];
   });
 

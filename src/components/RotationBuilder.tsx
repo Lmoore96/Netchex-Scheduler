@@ -101,12 +101,16 @@ function uniqueSorted(values: string[]) {
   return [...new Set(values)].sort();
 }
 
+function shiftSearchText(shift: Shift) {
+  return `${shift.departmentLabel} ${shift.sourceNotes ?? ""}`.toLowerCase();
+}
+
 function isSpecialFacilitiesShift(shift: Shift) {
-  return shift.departmentLabel.toLowerCase().includes("special facilit");
+  return shiftSearchText(shift).includes("special facilit");
 }
 
 function isShallowShift(shift: Shift) {
-  return shift.departmentLabel.toLowerCase().includes("shallow");
+  return shiftSearchText(shift).includes("shallow");
 }
 
 function assignmentKey(rotationId: string, positionId: string) {
