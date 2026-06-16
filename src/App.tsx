@@ -20,8 +20,27 @@ import {
   loadPositionLists,
   loadSavedSchedule as loadSavedScheduleRequest,
   saveAssignmentPlan as saveAssignmentPlanRequest,
-  savePositionList as savePositionListRequest
+  savePositionList as savePositionListRequest,
+  loadRotationPlan as loadRotationPlanRequest,
+  saveRotationPlan as saveRotationPlanRequest
 } from "./lib/storageClient";
+import {
+  addLocalManualShift,
+  deleteLocalPositionList,
+  deleteLocalSchedule,
+  importLocalSchedule,
+  listLocalSchedules,
+  loadLocalAssignmentPlan,
+  loadLocalPositionLists,
+  loadLocalRotationPlan,
+  loadLocalSchedule,
+  loadLocalWorkspace,
+  saveLocalAssignmentPlan,
+  saveLocalPositionList,
+  saveLocalRotationPlan,
+  saveLocalWorkspace
+} from "./lib/localStorageClient";
+import { readDatabaseConnected, writeDatabaseConnected } from "./lib/storageMode";
 
 type View = "import" | "positions" | "assign" | "print" | "rotations";
 
@@ -125,13 +144,14 @@ export function App() {
   const [assignmentSaveState, setAssignmentSaveState] = useState<PersistenceState>("idle");
   const [manualShiftError, setManualShiftError] = useState("");
   const [isSavingManualShift, setIsSavingManualShift] = useState(false);
+  const [databaseConnected, setDatabaseConnected] = useState(readDatabaseConnected);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadSavedLists() {
       try {
-        const savedLists = await loadPositionLists();
+        const savedLists = databaseConnected ? await loadPositionLists() : loadLocalPositionLists();
         if (isMounted) setPositionLists(savedLists);
       } catch (caught) {
         if (isMounted) {
@@ -149,7 +169,7 @@ export function App() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [databaseConnected]);
 
   const activeShifts = useMemo(
     () => shifts.filter((shift) => !calloutShiftIds[shift.id]),
@@ -159,6 +179,29 @@ export function App() {
     () => activeShifts.filter((shift) => !isLifeguardRotationDepartment(shift.departmentLabel)),
     [activeShifts]
   );
+
+  useEffect(() => {
+    if (databaseConnected || positionShifts.length === 0) return;
+    const localDepartments = uniqueSorted(positionShifts.map((shift) => shift.departmentLabel));
+    setPositionLists((current) => {
+      const next = withDefaultLists(current, localDepartments);
+      return next.length === current.length ? current : next;
+    });
+    setSelectedListIds((current) => {
+      const next = { ...current };
+      let changed = false;
+
+      localDepartments.forEach((departmentName) => {
+        const departmentId = departmentIdFromName(departmentName);
+        if (!next[departmentId]) {
+          next[departmentId] = positionLists.find((list) => list.departmentId === departmentId)?.id ?? defaultListForDepartment(departmentName).id;
+          changed = true;
+        }
+      });
+
+      return changed ? next : current;
+    });
+  }, [databaseConnected, positionShifts, positionLists]);
   const rotationShifts = useMemo(
     () => activeShifts.filter((shift) => isLifeguardRotationDepartment(shift.departmentLabel)),
     [activeShifts]
@@ -187,8 +230,18 @@ export function App() {
     [currentDate, currentDepartment, positionShifts]
   );
 
+  function persistLocalWorkspace(nextCalloutShiftIds: Record<string, boolean>, scheduleImportId = currentScheduleImportId) {
+    if (!databaseConnected && scheduleImportId) {
+      saveLocalWorkspace({ scheduleImportId, calloutShiftIds: nextCalloutShiftIds });
+    }
+  }
+
   function toggleCallout(shiftId: string) {
-    setCalloutShiftIds((current) => ({ ...current, [shiftId]: !current[shiftId] }));
+    setCalloutShiftIds((current) => {
+      const next = { ...current, [shiftId]: !current[shiftId] };
+      persistLocalWorkspace(next);
+      return next;
+    });
     setAssignments((current) => current.filter((assignment) => assignment.shiftId !== shiftId));
   }
 
@@ -209,10 +262,35 @@ export function App() {
     setView(nextDepartments.length > 0 ? "positions" : nextRotationShifts.length > 0 ? "rotations" : "import");
   }
 
+  useEffect(() => {
+    if (databaseConnected) return;
+    const workspace = loadLocalWorkspace();
+    const schedule = workspace ? loadLocalSchedule(workspace.scheduleImportId) : null;
+    if (schedule) {
+      loadShiftsIntoWorkspace(schedule.shifts);
+      setCalloutShiftIds(workspace?.calloutShiftIds ?? {});
+    }
+  }, [databaseConnected]);
+
+  function changeDatabaseConnected(connected: boolean) {
+    writeDatabaseConnected(connected);
+    setDatabaseConnected(connected);
+    setConfirmError("");
+    setPositionListError("");
+    setSavedScheduleError("");
+    setAssignmentSaveState("idle");
+  }
+
   async function confirmImport(reviewed: ParsedScheduleDraft) {
     setConfirmError("");
     setIsConfirming(true);
     try {
+      if (!databaseConnected) {
+        const schedule = importLocalSchedule(reviewed);
+        loadShiftsIntoWorkspace(schedule.shifts);
+        persistLocalWorkspace({}, schedule.importId);
+        return;
+      }
       const result = await confirmReviewedImport(reviewed);
       const schedule = await loadSavedScheduleRequest(result.importId);
       loadShiftsIntoWorkspace(schedule.shifts.length > 0 ? schedule.shifts : draftToShifts(reviewed, result.importId));
@@ -227,7 +305,7 @@ export function App() {
     setSavedScheduleError("");
     setIsLoadingSavedSchedules(true);
     try {
-      setSavedSchedules(await listSavedSchedulesRequest());
+      setSavedSchedules(databaseConnected ? await listSavedSchedulesRequest() : listLocalSchedules());
     } catch (caught) {
       setSavedScheduleError(caught instanceof Error ? caught.message : "Saved schedules could not be loaded");
     } finally {
@@ -239,8 +317,15 @@ export function App() {
     setSavedScheduleError("");
     setIsLoadingSavedSchedule(true);
     try {
-      const schedule = await loadSavedScheduleRequest(scheduleImportId);
+      const schedule = databaseConnected
+        ? await loadSavedScheduleRequest(scheduleImportId)
+        : loadLocalSchedule(scheduleImportId);
+      if (!schedule) {
+        setSavedScheduleError("Saved schedule could not be found");
+        return;
+      }
       loadShiftsIntoWorkspace(schedule.shifts);
+      persistLocalWorkspace({}, schedule.importId);
     } catch (caught) {
       setSavedScheduleError(caught instanceof Error ? caught.message : "Saved schedule could not be loaded");
     } finally {
@@ -251,7 +336,11 @@ export function App() {
   async function deleteSavedSchedule(scheduleImportId: string) {
     setSavedScheduleError("");
     try {
-      await deleteSavedScheduleRequest(scheduleImportId);
+      if (databaseConnected) {
+        await deleteSavedScheduleRequest(scheduleImportId);
+      } else {
+        deleteLocalSchedule(scheduleImportId);
+      }
       setSavedSchedules((current) => current.filter((schedule) => schedule.id !== scheduleImportId));
       if (shifts.some((shift) => shift.scheduleImportId === scheduleImportId)) {
         setShifts([]);
@@ -273,14 +362,19 @@ export function App() {
     setAssignmentSaveState("saving");
     try {
       const visibleShiftIds = new Set(visibleShifts.map((shift) => shift.id));
-      await saveAssignmentPlanRequest({
+      const plan = {
         scheduleImportId,
         planDate: currentDate,
         departmentLabel: currentDepartment,
         positionListId: selectedList?.id ?? selectedListId,
         positionsSnapshot: selectedPositions,
         assignments: assignments.filter((assignment) => visibleShiftIds.has(assignment.shiftId))
-      });
+      };
+      if (databaseConnected) {
+        await saveAssignmentPlanRequest(plan);
+      } else {
+        saveLocalAssignmentPlan(plan);
+      }
       setAssignmentSaveState("saved");
     } catch {
       setAssignmentSaveState("error");
@@ -293,11 +387,12 @@ export function App() {
 
     setAssignmentSaveState("loading");
     try {
-      const plan = await loadAssignmentPlanRequest({
+      const query = {
         scheduleImportId,
         planDate: currentDate,
         departmentLabel: currentDepartment
-      });
+      };
+      const plan = databaseConnected ? await loadAssignmentPlanRequest(query) : loadLocalAssignmentPlan(query);
 
       if (!plan) {
         setAssignmentSaveState("empty");
@@ -321,11 +416,13 @@ export function App() {
     setManualShiftError("");
     setIsSavingManualShift(true);
     try {
-      const savedShift = await addManualShiftRequest({
+      const request = {
         scheduleImportId: currentScheduleImportId,
         ...input
-      });
+      };
+      const savedShift = databaseConnected ? await addManualShiftRequest(request) : addLocalManualShift(request);
       setShifts((current) => [...current, savedShift]);
+      persistLocalWorkspace(calloutShiftIds, savedShift.scheduleImportId);
       if (!isLifeguardRotationDepartment(savedShift.departmentLabel)) {
         const nextDepartmentId = departmentIdFromName(savedShift.departmentLabel);
         const nextPositionLists = withDefaultLists(positionLists, [savedShift.departmentLabel]);
@@ -361,7 +458,7 @@ export function App() {
     applyPositionList(nextList);
 
     try {
-      const savedList = await savePositionListRequest(nextList);
+      const savedList = databaseConnected ? await savePositionListRequest(nextList) : saveLocalPositionList(nextList);
       applyPositionList(savedList);
     } catch (caught) {
       const message =
@@ -377,8 +474,10 @@ export function App() {
     setPositionListError("");
 
     try {
-      if (isSavedPositionList(listToDelete)) {
+      if (databaseConnected && isSavedPositionList(listToDelete)) {
         await deletePositionListRequest(listToDelete.id);
+      } else if (!databaseConnected) {
+        deleteLocalPositionList(listToDelete.id);
       }
 
       setPositionLists((currentLists) =>
@@ -436,7 +535,7 @@ export function App() {
   }
 
   return (
-    <Shell>
+    <Shell databaseConnected={databaseConnected} onDatabaseConnectedChange={changeDatabaseConnected}>
       <div className="workflow-bar no-print">
         <nav className="tabs" aria-label="Workflow">
           <button
@@ -516,6 +615,7 @@ export function App() {
           isImporting={isConfirming}
           externalError={confirmError}
           savedSchedules={savedSchedules}
+          databaseConnected={databaseConnected}
           onRequestSavedSchedules={refreshSavedSchedules}
           onLoadSavedSchedule={loadSavedSchedule}
           onDeleteSavedSchedule={deleteSavedSchedule}
@@ -567,7 +667,13 @@ export function App() {
         </section>
       ) : null}
 
-      {view === "rotations" ? <RotationBuilder shifts={rotationShifts} /> : null}
+      {view === "rotations" ? (
+        <RotationBuilder
+          shifts={rotationShifts}
+          onSavePlan={databaseConnected ? saveRotationPlanRequest : async (plan) => saveLocalRotationPlan(plan)}
+          onLoadPlan={databaseConnected ? loadRotationPlanRequest : async (query) => loadLocalRotationPlan(query)}
+        />
+      ) : null}
 
       {view === "print" ? (
         <PrintView

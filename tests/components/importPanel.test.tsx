@@ -50,6 +50,24 @@ describe("ImportPanel", () => {
     expect(onRequestSavedSchedules).toHaveBeenCalledOnce();
   });
 
+  it("labels saved schedules as local when the database is disconnected", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ImportPanel
+        onDraft={() => undefined}
+        databaseConnected={false}
+        savedSchedules={savedSchedules}
+        onRequestSavedSchedules={() => undefined}
+      />
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Load Local" }));
+
+    expect(screen.getByLabelText("Saved on this device")).toHaveValue("import-1");
+    expect(screen.getByText("Local schedules are available only in this browser.")).toBeInTheDocument();
+  });
+
   it("lets managers delete the selected saved schedule", async () => {
     const user = userEvent.setup();
     const onDeleteSavedSchedule = vi.fn();

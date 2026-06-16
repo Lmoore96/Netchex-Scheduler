@@ -13,6 +13,7 @@ interface ImportPanelProps {
   isLoadingSavedSchedules?: boolean;
   isLoadingSavedSchedule?: boolean;
   savedScheduleError?: string;
+  databaseConnected?: boolean;
 }
 
 type ImportPanelTab = "import" | "load";
@@ -36,7 +37,8 @@ export function ImportPanel({
   onDeleteSavedSchedule,
   isLoadingSavedSchedules = false,
   isLoadingSavedSchedule = false,
-  savedScheduleError = ""
+  savedScheduleError = "",
+  databaseConnected = true
 }: ImportPanelProps) {
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -105,7 +107,7 @@ export function ImportPanel({
           className={activeTab === "load" ? "is-active" : undefined}
           onClick={() => void selectTab("load")}
         >
-          Load Saved
+          {databaseConnected ? "Load Saved" : "Load Local"}
         </button>
       </div>
 
@@ -130,7 +132,7 @@ export function ImportPanel({
       {activeTab === "load" ? (
         <div className="import-panel__tab-panel import-panel__saved" role="tabpanel">
           <div className="import-panel__saved-picker">
-            <label htmlFor="saved-schedule-select">Saved schedule</label>
+            <label htmlFor="saved-schedule-select">{databaseConnected ? "Saved schedule" : "Saved on this device"}</label>
             <select
               id="saved-schedule-select"
               value={selectedScheduleId}
@@ -153,6 +155,7 @@ export function ImportPanel({
                 Delete
               </button>
             </div>
+            {!databaseConnected ? <p>Local schedules are available only in this browser.</p> : null}
           </div>
         </div>
       ) : null}

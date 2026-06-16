@@ -122,6 +122,14 @@ button:focus-visible {
   padding: 22px 24px;
 }
 
+.shell__header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .shell__eyebrow {
   color: var(--teal-dark);
   display: block;
@@ -153,6 +161,91 @@ button:focus-visible {
   line-height: 1;
   padding: 7px 10px;
   white-space: nowrap;
+}
+
+.shell__badge--local {
+  background: #fff8e8;
+  border-color: #ecd39b;
+  color: var(--amber);
+}
+
+.admin-menu {
+  position: relative;
+}
+
+.admin-menu__trigger {
+  min-width: 78px;
+}
+
+.admin-menu__panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 14px;
+  max-width: calc(100vw - 28px);
+  padding: 14px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 310px;
+  z-index: 10;
+}
+
+.admin-menu__panel h2 {
+  color: #172026;
+  font-size: 18px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.admin-menu__panel p,
+.admin-menu__setting span {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.admin-menu__setting {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.admin-menu__setting strong {
+  display: block;
+}
+
+.admin-menu__switch {
+  background: #d8dfd7;
+  border-color: #d8dfd7;
+  border-radius: 999px;
+  min-height: 30px;
+  padding: 3px;
+  position: relative;
+  width: 54px;
+}
+
+.admin-menu__switch span {
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(31, 41, 51, 0.22);
+  display: block;
+  height: 22px;
+  transform: translateX(-10px);
+  transition: transform 140ms ease;
+  width: 22px;
+}
+
+.admin-menu__switch[aria-checked="true"] {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.admin-menu__switch[aria-checked="true"] span {
+  transform: translateX(10px);
 }
 
 .shell__main {
@@ -788,6 +881,10 @@ button:focus-visible {
   .position-list-editor__header {
     align-items: start;
     flex-direction: column;
+  }
+
+  .shell__header-actions {
+    justify-content: flex-start;
   }
 
   .shell__main {

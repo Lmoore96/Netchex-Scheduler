@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Shift } from "../domain/types";
+import type { RotationPlanRequest, SavedRotationPlan, Shift } from "../domain/types";
 import { loadRotationPlan, saveRotationPlan } from "../lib/storageClient";
 import { formatShiftRange } from "../lib/time";
 import type { PersistenceState } from "./AssignmentPersistenceActions";
@@ -27,6 +27,8 @@ interface RotationDefinition {
 
 interface RotationBuilderProps {
   shifts: Shift[];
+  onSavePlan?: (plan: RotationPlanRequest) => Promise<SavedRotationPlan>;
+  onLoadPlan?: (params: Pick<RotationPlanRequest, "scheduleImportId" | "planDate">) => Promise<SavedRotationPlan | null>;
 }
 
 const storageKey = "lifeguard-rotation-templates-v1";
@@ -222,7 +224,7 @@ function rotationStatusMessage(saveState: PersistenceState) {
   return "";
 }
 
-export function RotationBuilder({ shifts }: RotationBuilderProps) {
+export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadPlan = loadRotationPlan }: RotationBuilderProps) {
   const dates = useMemo(() => uniqueSorted(shifts.map((shift) => shift.shiftDate)), [shifts]);
   const [selectedDate, setSelectedDate] = useState("");
   const [assignments, setAssignments] = useState<Record<string, string>>({});
@@ -467,7 +469,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
 
     setRotationSaveState("saving");
     try {
-      await saveRotationPlan({
+      await onSavePlan({
         scheduleImportId: currentScheduleImportId,
         planDate: currentDate,
         rotationTemplates,
@@ -485,7 +487,7 @@ export function RotationBuilder({ shifts }: RotationBuilderProps) {
 
     setRotationSaveState("loading");
     try {
-      const plan = await loadRotationPlan({ scheduleImportId: currentScheduleImportId, planDate: currentDate });
+      const plan = await onLoadPlan({ scheduleImportId: currentScheduleImportId, planDate: currentDate });
       if (!plan) {
         setRotationSaveState("empty");
         return;
