@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ImportPanel } from "../../src/components/ImportPanel";
@@ -29,10 +29,10 @@ describe("ImportPanel", () => {
       />
     );
 
-    expect(screen.getByLabelText("Import PDF")).toBeInTheDocument();
+    expect(screen.getByLabelText("Import PDF or CSV")).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Load Saved" }));
     expect(screen.getByLabelText("Saved schedule")).toHaveValue("import-1");
-    expect(screen.queryByLabelText("Import PDF")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Import PDF or CSV")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Load schedule" }));
 
@@ -48,6 +48,24 @@ describe("ImportPanel", () => {
     await user.click(screen.getByRole("tab", { name: "Load Saved" }));
 
     expect(onRequestSavedSchedules).toHaveBeenCalledOnce();
+  });
+
+  it("imports a WhenToWork CSV file", async () => {
+    const user = userEvent.setup();
+    const onDraft = vi.fn();
+    const file = new File([
+      `"Shift ID","Schedule ID","Employee Number","Position ID","Position Name","Category","Shift Description","Date","Start Time","End Time","Duration","Day Of Week","Employee Name"\n` +
+      `706420785,706073206,,706072528,"GS Guest Services",,,6/16/2026,09:40 AM,01:00 PM,   3.33,1,"Smith, Alex"\n`
+    ], "EXPORT.CSV", { type: "text/csv" });
+
+    render(<ImportPanel onDraft={onDraft} />);
+
+    await user.upload(screen.getByLabelText("Import PDF or CSV"), file);
+
+    await waitFor(() => expect(onDraft).toHaveBeenCalledWith(expect.objectContaining({
+      sourceFileName: "EXPORT.CSV",
+      shifts: [expect.objectContaining({ employeeName: "Smith, Alex", departmentLabel: "GS Guest Services" })]
+    })));
   });
 
   it("labels saved schedules as local when the database is disconnected", async () => {

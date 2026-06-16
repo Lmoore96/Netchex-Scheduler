@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ParsedScheduleDraft, SavedScheduleSummary } from "../domain/types";
 import { uploadSchedulePdf } from "../lib/storageClient";
+import { parseWhenToWorkCsv } from "../lib/whenToWorkCsv";
 
 interface ImportPanelProps {
   onDraft: (draft: ParsedScheduleDraft) => void | Promise<void>;
@@ -25,6 +26,17 @@ function displayDate(value: string) {
 
 function savedScheduleLabel(schedule: SavedScheduleSummary) {
   return `${displayDate(schedule.dateRangeStart)} - ${displayDate(schedule.dateRangeEnd)} (${schedule.shiftCount} shifts)`;
+}
+
+function readFileText(file: File) {
+  if (typeof file.text === "function") return file.text();
+
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
+    reader.addEventListener("error", () => reject(reader.error ?? new Error("File could not be read")));
+    reader.readAsText(file);
+  });
 }
 
 export function ImportPanel({
@@ -60,7 +72,14 @@ export function ImportPanel({
     setError("");
     setIsUploading(true);
     try {
-      await onDraft(await uploadSchedulePdf(file));
+      const lowerName = file.name.toLowerCase();
+      if (lowerName.endsWith(".csv") || file.type.includes("csv")) {
+        await onDraft(parseWhenToWorkCsv(await readFileText(file), file.name));
+      } else if (lowerName.endsWith(".pdf") || file.type === "application/pdf") {
+        await onDraft(await uploadSchedulePdf(file));
+      } else {
+        throw new Error("Upload a PDF or CSV schedule file.");
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Upload failed");
     } finally {
@@ -114,12 +133,12 @@ export function ImportPanel({
       {activeTab === "import" ? (
         <div className="import-panel__tab-panel" role="tabpanel">
           <label className="upload">
-            <span>Import PDF</span>
+            <span>Import PDF or CSV</span>
             <input
               type="file"
-              accept="application/pdf"
+              accept=".pdf,.csv,application/pdf,text/csv"
               disabled={isBusy}
-              aria-label="Import PDF"
+              aria-label="Import PDF or CSV"
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) void handleFile(file);
