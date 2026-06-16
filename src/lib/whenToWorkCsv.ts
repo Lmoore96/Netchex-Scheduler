@@ -4,6 +4,13 @@ import { parsedScheduleDraftSchema } from "../domain/validation";
 type CsvRow = Record<string, string>;
 
 const requiredHeaders = ["Shift ID", "Position Name", "Date", "Start Time", "End Time", "Employee Name"];
+const departmentLabelsByCode: Record<string, string> = {
+  AQ: "Aquatics",
+  CA: "Cashiers",
+  GS: "Guest Services",
+  FB: "Food and Beverage",
+  SC: "Splash Crew"
+};
 
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -91,6 +98,11 @@ function departmentCodeFromPosition(positionName: string) {
   return match ? match[1].toUpperCase() : normalized;
 }
 
+function departmentLabelFromPosition(positionName: string) {
+  const code = departmentCodeFromPosition(positionName);
+  return departmentLabelsByCode[code] ?? code;
+}
+
 function sourceNotesForRow(row: CsvRow) {
   const notes = [];
   const positionName = row["Position Name"].trim();
@@ -119,7 +131,7 @@ export function parseWhenToWorkCsv(csvText: string, sourceFileName: string): Par
       shiftDate: parseDate(row.Date),
       startTime: parseTime(row["Start Time"]),
       endTime: parseTime(row["End Time"]),
-      departmentLabel: departmentCodeFromPosition(row["Position Name"]),
+      departmentLabel: departmentLabelFromPosition(row["Position Name"]),
       sourceConfidence: "high",
       sourceNotes: sourceNotesForRow(row)
     }];

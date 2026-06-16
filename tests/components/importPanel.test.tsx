@@ -64,7 +64,7 @@ describe("ImportPanel", () => {
 
     await waitFor(() => expect(onDraft).toHaveBeenCalledWith(expect.objectContaining({
       sourceFileName: "EXPORT.CSV",
-      shifts: [expect.objectContaining({ employeeName: "Smith, Alex", departmentLabel: "GS" })]
+      shifts: [expect.objectContaining({ employeeName: "Smith, Alex", departmentLabel: "Guest Services" })]
     })));
   });
 
