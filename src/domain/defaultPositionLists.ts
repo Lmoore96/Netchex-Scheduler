@@ -10,6 +10,7 @@ const configuredDefaultsByDepartment: Record<string, Array<Omit<PositionDefiniti
     { label: "Season Pass", capacityMode: "multiple" },
     { label: "Cafe", capacityMode: "multiple" },
     { label: "Pizza", capacityMode: "multiple" },
+    { label: "Crew Window", capacityMode: "multiple" },
     { label: "Pollys", capacityMode: "single" },
     { label: "Mini Melts", capacityMode: "single" },
     { label: "Ice Cream", capacityMode: "single" },

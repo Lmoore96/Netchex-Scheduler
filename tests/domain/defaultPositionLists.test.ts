@@ -10,6 +10,7 @@ describe("default position lists", () => {
       expect.objectContaining({ label: "Season Pass", capacityMode: "multiple" }),
       expect.objectContaining({ label: "Cafe", capacityMode: "multiple" }),
       expect.objectContaining({ label: "Pizza", capacityMode: "multiple" }),
+      expect.objectContaining({ label: "Crew Window", capacityMode: "multiple" }),
       expect.objectContaining({ label: "Pollys", capacityMode: "single" }),
       expect.objectContaining({ label: "Mini Melts", capacityMode: "single" }),
       expect.objectContaining({ label: "Ice Cream", capacityMode: "single" }),
