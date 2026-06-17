@@ -27,7 +27,7 @@ describe("AdminMenu", () => {
     expect(screen.getByText("Local mode: data stays on this device")).toBeInTheDocument();
   });
 
-  it("shows storage status and admin cleanup tools", async () => {
+  it("keeps admin tools organized behind simple expandable sections", async () => {
     const user = userEvent.setup();
     const onRefreshSavedSchedules = vi.fn();
     const onDeleteSavedSchedule = vi.fn();
@@ -76,27 +76,34 @@ describe("AdminMenu", () => {
     expect(screen.getByText("2 saved schedules")).toBeInTheDocument();
     expect(screen.getByText("3 active callouts")).toBeInTheDocument();
     expect(screen.getByText("4 current assignments")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Refresh schedules" }));
+    await user.click(screen.getByRole("button", { name: /Schedules/ }));
+
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
     expect(onRefreshSavedSchedules).toHaveBeenCalledOnce();
 
-    await user.selectOptions(screen.getByLabelText("Saved schedule cleanup"), "schedule-1");
-    await user.click(screen.getByRole("button", { name: "Delete selected schedule" }));
+    await user.selectOptions(screen.getByLabelText("Saved schedule"), "schedule-1");
+    await user.click(screen.getByRole("button", { name: "Delete selected" }));
     expect(onDeleteSavedSchedule).toHaveBeenCalledWith("schedule-1");
 
-    await user.type(screen.getByLabelText("Delete schedules ending before"), "2026-06-10");
-    await user.click(screen.getByRole("button", { name: "Delete older schedules" }));
+    await user.type(screen.getByLabelText("Ending before"), "2026-06-10");
+    await user.click(screen.getByRole("button", { name: "Delete old" }));
     expect(onDeleteSchedulesOlderThan).toHaveBeenCalledWith("2026-06-10");
 
-    await user.click(screen.getByRole("button", { name: "Clear day callouts" }));
-    await user.click(screen.getByRole("button", { name: "Clear department callouts" }));
-    await user.click(screen.getByRole("button", { name: "Restore everyone" }));
+    await user.click(screen.getByRole("button", { name: /Callouts/ }));
+    expect(screen.queryByRole("button", { name: "Delete selected" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear day" }));
+    await user.click(screen.getByRole("button", { name: "Clear department" }));
+    await user.click(screen.getByRole("button", { name: "Restore all" }));
     expect(onClearCurrentDayCallouts).toHaveBeenCalledOnce();
     expect(onClearCurrentDepartmentCallouts).toHaveBeenCalledOnce();
     expect(onRestoreAllCallouts).toHaveBeenCalledOnce();
 
-    await user.click(screen.getByRole("button", { name: "Clear current assignments" }));
-    await user.click(screen.getByRole("button", { name: "Clear day assignments" }));
+    await user.click(screen.getByRole("button", { name: /Assignments/ }));
+    await user.click(screen.getByRole("button", { name: "Clear current" }));
+    await user.click(screen.getByRole("button", { name: "Clear day" }));
     expect(onClearCurrentAssignments).toHaveBeenCalledOnce();
     expect(onClearDayAssignments).toHaveBeenCalledOnce();
   });
