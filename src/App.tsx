@@ -133,6 +133,7 @@ export function App() {
   const [databaseConnected, setDatabaseConnected] = useState(readDatabaseConnected);
   const [isPositionEditorOpen, setIsPositionEditorOpen] = useState(false);
   const [crewPrintMode, setCrewPrintMode] = useState<PrintMode>("sign-in");
+  const [currentScheduleLabel, setCurrentScheduleLabel] = useState("No schedule loaded");
 
   useEffect(() => {
     let isMounted = true;
@@ -217,6 +218,37 @@ export function App() {
     () => positionShifts.filter((shift) => shift.departmentLabel === currentDepartment && shift.shiftDate === currentDate),
     [currentDate, currentDepartment, positionShifts]
   );
+  const visibleShiftIds = useMemo(() => new Set(visibleShifts.map((shift) => shift.id)), [visibleShifts]);
+  const currentDayShiftIds = useMemo(
+    () => new Set(positionShifts.filter((shift) => shift.shiftDate === currentDate).map((shift) => shift.id)),
+    [currentDate, positionShifts]
+  );
+  const activeCalloutCount = useMemo(
+    () => shifts.filter((shift) => calloutShiftIds[shift.id]).length,
+    [calloutShiftIds, shifts]
+  );
+  const visibleAssignmentCount = useMemo(
+    () => assignments.filter((assignment) => visibleShiftIds.has(assignment.shiftId)).length,
+    [assignments, visibleShiftIds]
+  );
+  const dayAssignmentCount = useMemo(
+    () => assignments.filter((assignment) => currentDayShiftIds.has(assignment.shiftId)).length,
+    [assignments, currentDayShiftIds]
+  );
+  const adminStatus = useMemo(
+    () => ({
+      currentScheduleLabel,
+      savedScheduleCount: savedSchedules.length,
+      activeCalloutCount,
+      visibleAssignmentCount,
+      dayAssignmentCount
+    }),
+    [activeCalloutCount, currentScheduleLabel, dayAssignmentCount, savedSchedules.length, visibleAssignmentCount]
+  );
+
+  function scheduleLabelFor(schedule: Pick<SavedScheduleSummary, "sourceFileName" | "dateRangeStart" | "dateRangeEnd">) {
+    return `${schedule.sourceFileName} · ${schedule.dateRangeStart} to ${schedule.dateRangeEnd}`;
+  }
 
   function persistLocalWorkspace(nextCalloutShiftIds: Record<string, boolean>, scheduleImportId = currentScheduleImportId) {
     if (!databaseConnected && scheduleImportId) {
@@ -233,7 +265,7 @@ export function App() {
     setAssignments((current) => current.filter((assignment) => assignment.shiftId !== shiftId));
   }
 
-  function loadShiftsIntoWorkspace(nextShifts: Shift[]) {
+  function loadShiftsIntoWorkspace(nextShifts: Shift[], scheduleLabel = "Current schedule") {
     const nextPositionShifts = nextShifts.filter((shift) => !isLifeguardRotationShift(shift));
     const nextRotationShifts = nextShifts.filter((shift) => isLifeguardRotationShift(shift));
     const nextDepartments = uniqueSorted(nextPositionShifts.map((shift) => shift.departmentLabel));
@@ -248,6 +280,7 @@ export function App() {
     setSelectedListIds(selectedListIdsForDepartments(nextPositionLists, nextDepartments));
     setAssignments([]);
     setIsPositionEditorOpen(false);
+    setCurrentScheduleLabel(scheduleLabel);
     setView(nextDepartments.length > 0 ? "assign" : nextRotationShifts.length > 0 ? "rotations" : "import");
   }
 
@@ -256,7 +289,7 @@ export function App() {
     const workspace = loadLocalWorkspace();
     const schedule = workspace ? loadLocalSchedule(workspace.scheduleImportId) : null;
     if (schedule) {
-      loadShiftsIntoWorkspace(schedule.shifts);
+      loadShiftsIntoWorkspace(schedule.shifts, scheduleLabelFor(schedule));
       setCalloutShiftIds(workspace?.calloutShiftIds ?? {});
     }
   }, [databaseConnected]);
@@ -276,13 +309,16 @@ export function App() {
     try {
       if (!databaseConnected) {
         const schedule = importLocalSchedule(reviewed);
-        loadShiftsIntoWorkspace(schedule.shifts);
+        loadShiftsIntoWorkspace(schedule.shifts, scheduleLabelFor(schedule));
         persistLocalWorkspace({}, schedule.importId);
         return;
       }
       const result = await confirmReviewedImport(reviewed);
       const schedule = await loadSavedScheduleRequest(result.importId);
-      loadShiftsIntoWorkspace(schedule.shifts.length > 0 ? schedule.shifts : draftToShifts(reviewed, result.importId));
+      loadShiftsIntoWorkspace(
+        schedule.shifts.length > 0 ? schedule.shifts : draftToShifts(reviewed, result.importId),
+        scheduleLabelFor(schedule)
+      );
     } catch (caught) {
       setConfirmError(caught instanceof Error ? caught.message : "Import could not be confirmed");
     } finally {
@@ -290,11 +326,15 @@ export function App() {
     }
   }
 
+  async function readSavedScheduleSummaries() {
+    return databaseConnected ? await listSavedSchedulesRequest() : listLocalSchedules();
+  }
+
   async function refreshSavedSchedules() {
     setSavedScheduleError("");
     setIsLoadingSavedSchedules(true);
     try {
-      setSavedSchedules(databaseConnected ? await listSavedSchedulesRequest() : listLocalSchedules());
+      setSavedSchedules(await readSavedScheduleSummaries());
     } catch (caught) {
       setSavedScheduleError(caught instanceof Error ? caught.message : "Saved schedules could not be loaded");
     } finally {
@@ -313,7 +353,7 @@ export function App() {
         setSavedScheduleError("Saved schedule could not be found");
         return;
       }
-      loadShiftsIntoWorkspace(schedule.shifts);
+      loadShiftsIntoWorkspace(schedule.shifts, scheduleLabelFor(schedule));
       persistLocalWorkspace({}, schedule.importId);
     } catch (caught) {
       setSavedScheduleError(caught instanceof Error ? caught.message : "Saved schedule could not be loaded");
@@ -337,11 +377,62 @@ export function App() {
         setAssignments([]);
         setSelectedDate("");
         setSelectedDepartment("");
+        setCurrentScheduleLabel("No schedule loaded");
         setView("import");
       }
     } catch (caught) {
       setSavedScheduleError(caught instanceof Error ? caught.message : "Saved schedule could not be deleted");
     }
+  }
+
+  async function deleteSavedSchedulesOlderThan(cutoffDate: string) {
+    if (!cutoffDate) return;
+
+    setSavedScheduleError("");
+    try {
+      const schedules = savedSchedules.length > 0 ? savedSchedules : await readSavedScheduleSummaries();
+      const schedulesToDelete = schedules.filter((schedule) => schedule.dateRangeEnd < cutoffDate);
+
+      for (const schedule of schedulesToDelete) {
+        await deleteSavedSchedule(schedule.id);
+      }
+    } catch (caught) {
+      setSavedScheduleError(caught instanceof Error ? caught.message : "Old saved schedules could not be deleted");
+    }
+  }
+
+  function clearCalloutsFor(targetShifts: Shift[]) {
+    const targetShiftIds = new Set(targetShifts.map((shift) => shift.id));
+    setCalloutShiftIds((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([shiftId, isCalledOut]) => isCalledOut && !targetShiftIds.has(shiftId))
+      );
+      persistLocalWorkspace(next);
+      return next;
+    });
+  }
+
+  function clearCurrentDayCallouts() {
+    clearCalloutsFor(shifts.filter((shift) => shift.shiftDate === currentDate));
+  }
+
+  function clearCurrentDepartmentCallouts() {
+    clearCalloutsFor(shifts.filter((shift) => shift.shiftDate === currentDate && shift.departmentLabel === currentDepartment));
+  }
+
+  function restoreAllCallouts() {
+    setCalloutShiftIds({});
+    persistLocalWorkspace({});
+  }
+
+  function clearCurrentAssignments() {
+    setAssignments((current) => current.filter((assignment) => !visibleShiftIds.has(assignment.shiftId)));
+    setAssignmentSaveState("idle");
+  }
+
+  function clearDayAssignments() {
+    setAssignments((current) => current.filter((assignment) => !currentDayShiftIds.has(assignment.shiftId)));
+    setAssignmentSaveState("idle");
   }
 
   async function saveCurrentAssignments() {
@@ -526,7 +617,22 @@ export function App() {
   }
 
   return (
-    <Shell databaseConnected={databaseConnected} onDatabaseConnectedChange={changeDatabaseConnected}>
+    <Shell
+      databaseConnected={databaseConnected}
+      onDatabaseConnectedChange={changeDatabaseConnected}
+      adminStatus={adminStatus}
+      savedSchedules={savedSchedules}
+      savedScheduleError={savedScheduleError}
+      isLoadingSavedSchedules={isLoadingSavedSchedules}
+      onRefreshSavedSchedules={refreshSavedSchedules}
+      onDeleteSavedSchedule={deleteSavedSchedule}
+      onDeleteSchedulesOlderThan={deleteSavedSchedulesOlderThan}
+      onClearCurrentDayCallouts={clearCurrentDayCallouts}
+      onClearCurrentDepartmentCallouts={clearCurrentDepartmentCallouts}
+      onRestoreAllCallouts={restoreAllCallouts}
+      onClearCurrentAssignments={clearCurrentAssignments}
+      onClearDayAssignments={clearDayAssignments}
+    >
       <div className="workflow-bar no-print">
         <nav className="tabs" aria-label="Workflow">
           <button

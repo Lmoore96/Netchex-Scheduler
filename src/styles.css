@@ -183,28 +183,88 @@ button:focus-visible {
   border-radius: 8px;
   box-shadow: var(--shadow);
   display: grid;
-  gap: 14px;
+  gap: 16px;
   max-width: calc(100vw - 28px);
   padding: 14px;
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  width: 310px;
+  width: 430px;
   z-index: 10;
 }
 
-.admin-menu__panel h2 {
+.admin-menu__panel h2,
+.admin-menu__section h3 {
   color: #172026;
-  font-size: 18px;
   line-height: 1.2;
   margin: 0;
 }
 
+.admin-menu__panel h2 {
+  font-size: 18px;
+}
+
+.admin-menu__section h3 {
+  font-size: 14px;
+}
+
 .admin-menu__panel p,
-.admin-menu__setting span {
+.admin-menu__setting span,
+.admin-menu__section label span,
+.admin-menu__stats dt {
   color: var(--muted);
   font-size: 13px;
   margin: 4px 0 0;
+}
+
+.admin-menu__section {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+}
+
+.admin-menu__section label {
+  display: grid;
+  gap: 5px;
+}
+
+.admin-menu__section select,
+.admin-menu__section input {
+  width: 100%;
+}
+
+.admin-menu__stats {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.admin-menu__stats div {
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+
+.admin-menu__stats dd {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-menu__button-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-menu__button-grid button:first-child:last-child,
+.admin-menu__button-grid button:nth-child(3) {
+  grid-column: 1 / -1;
 }
 
 .admin-menu__setting {
