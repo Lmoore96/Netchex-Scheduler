@@ -9,7 +9,7 @@ import { PositionListEditor } from "./components/PositionListEditor";
 import { PrintView } from "./components/PrintView";
 import { RotationBuilder } from "./components/RotationBuilder";
 import { Shell } from "./components/Shell";
-import type { Assignment, ManualShiftInput, ParsedScheduleDraft, PositionDefinition, PositionList, SavedScheduleSummary, Shift } from "./domain/types";
+import type { Assignment, ManualShiftInput, ParsedScheduleDraft, PositionList, SavedScheduleSummary, Shift } from "./domain/types";
 import {
   addManualShift as addManualShiftRequest,
   confirmReviewedImport,
@@ -41,13 +41,9 @@ import {
   saveLocalWorkspace
 } from "./lib/localStorageClient";
 import { readDatabaseConnected, writeDatabaseConnected } from "./lib/storageMode";
+import { defaultListForDepartment, departmentIdFromName, starterPositions } from "./domain/defaultPositionLists";
 
-type View = "import" | "positions" | "assign" | "print" | "rotations";
-
-const starterPositions: PositionDefinition[] = [
-  { key: "lead", label: "Lead", sortOrder: 0, capacityMode: "single" },
-  { key: "starter", label: "Starter", sortOrder: 1, capacityMode: "multiple" }
-];
+type View = "import" | "assign" | "print" | "rotations";
 
 function draftToShifts(draft: ParsedScheduleDraft, importId: string): Shift[] {
   return draft.shifts
@@ -70,10 +66,6 @@ function uniqueSorted(values: string[]) {
   return [...new Set(values)].sort();
 }
 
-function departmentIdFromName(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "department";
-}
-
 function isLifeguardRotationText(value: string) {
   const normalized = value.toLowerCase();
   return normalized.includes("shallow") || normalized.includes("special facilit");
@@ -81,16 +73,6 @@ function isLifeguardRotationText(value: string) {
 
 function isLifeguardRotationShift(shift: Pick<Shift, "departmentLabel" | "sourceNotes">) {
   return isLifeguardRotationText(`${shift.departmentLabel} ${shift.sourceNotes ?? ""}`);
-}
-
-function defaultListForDepartment(departmentName: string): PositionList {
-  const departmentId = departmentIdFromName(departmentName);
-  return {
-    id: `${departmentId}-default`,
-    departmentId,
-    name: "Default list",
-    positions: starterPositions
-  };
 }
 
 function samePositionList(first: PositionList, second: PositionList) {
@@ -149,6 +131,7 @@ export function App() {
   const [manualShiftError, setManualShiftError] = useState("");
   const [isSavingManualShift, setIsSavingManualShift] = useState(false);
   const [databaseConnected, setDatabaseConnected] = useState(readDatabaseConnected);
+  const [isPositionEditorOpen, setIsPositionEditorOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -263,7 +246,8 @@ export function App() {
     setPositionLists(nextPositionLists);
     setSelectedListIds(selectedListIdsForDepartments(nextPositionLists, nextDepartments));
     setAssignments([]);
-    setView(nextDepartments.length > 0 ? "positions" : nextRotationShifts.length > 0 ? "rotations" : "import");
+    setIsPositionEditorOpen(false);
+    setView(nextDepartments.length > 0 ? "assign" : nextRotationShifts.length > 0 ? "rotations" : "import");
   }
 
   useEffect(() => {
@@ -531,11 +515,13 @@ export function App() {
   function selectDepartment(department: string) {
     setSelectedDepartment(department);
     setAssignments([]);
+    setIsPositionEditorOpen(false);
   }
 
   function selectDate(date: string) {
     setSelectedDate(date);
     setAssignments([]);
+    setIsPositionEditorOpen(false);
   }
 
   return (
@@ -548,14 +534,6 @@ export function App() {
             onClick={() => setView("import")}
           >
             Import
-          </button>
-          <button
-            type="button"
-            className={view === "positions" ? "is-active" : undefined}
-            onClick={() => setView("positions")}
-            disabled={positionShifts.length === 0}
-          >
-            Positions
           </button>
           <button
             type="button"
@@ -629,46 +607,52 @@ export function App() {
         />
       ) : null}
 
-      {view === "positions" ? (
+      {view === "assign" ? (
         <>
           {positionListError ? <p className="app-alert" role="alert">{positionListError}</p> : null}
-          <PositionListEditor
-            departmentName={currentDepartment}
-            positionLists={departmentLists}
-            selectedListId={selectedListId}
-            onSelectList={(listId) => setSelectedListIds((current) => ({ ...current, [currentDepartmentId]: listId }))}
-            onCreateList={createPositionList}
-            onDeleteList={deletePositionList}
-            onSaveList={savePositionList}
-          />
-        </>
-      ) : null}
-
-      {view === "assign" ? (
-        <section className="panel panel--workspace">
-          <div className="section-heading">
-            <div>
-              <h2>{currentDepartment} Assignments</h2>
-              <p>{currentDate}</p>
+          <section className="panel panel--workspace">
+            <div className="section-heading">
+              <div>
+                <h2>{currentDepartment} Assignments</h2>
+                <p>{currentDate}</p>
+              </div>
+              <div className="section-heading__actions no-print">
+                <span>{selectedList?.name ?? "Default list"}</span>
+                <button type="button" onClick={() => setIsPositionEditorOpen((current) => !current)}>
+                  {isPositionEditorOpen ? "Done editing positions" : "Edit positions"}
+                </button>
+              </div>
             </div>
-            <span>{selectedList?.name ?? "Default list"}</span>
-          </div>
-          <AssignmentPersistenceActions
-            canUse={visibleShifts.length > 0}
-            saveState={assignmentSaveState}
-            onSave={saveCurrentAssignments}
-            onLoad={loadCurrentAssignments}
-          />
-          <AssignmentBoard
-            positions={selectedPositions}
-            shifts={visibleShifts}
-            assignments={assignments}
-            onChange={(nextAssignments) => {
-              setAssignments(nextAssignments);
-              setAssignmentSaveState("idle");
-            }}
-          />
-        </section>
+            <AssignmentPersistenceActions
+              canUse={visibleShifts.length > 0}
+              saveState={assignmentSaveState}
+              onSave={saveCurrentAssignments}
+              onLoad={loadCurrentAssignments}
+            />
+            {isPositionEditorOpen ? (
+              <PositionListEditor
+                departmentName={currentDepartment}
+                positionLists={departmentLists}
+                selectedListId={selectedListId}
+                onSelectList={(listId) => setSelectedListIds((current) => ({ ...current, [currentDepartmentId]: listId }))}
+                onCreateList={createPositionList}
+                onDeleteList={deletePositionList}
+                onSaveList={savePositionList}
+                embedded
+                initiallyEditing
+              />
+            ) : null}
+            <AssignmentBoard
+              positions={selectedPositions}
+              shifts={visibleShifts}
+              assignments={assignments}
+              onChange={(nextAssignments) => {
+                setAssignments(nextAssignments);
+                setAssignmentSaveState("idle");
+              }}
+            />
+          </section>
+        </>
       ) : null}
 
       {view === "rotations" ? (

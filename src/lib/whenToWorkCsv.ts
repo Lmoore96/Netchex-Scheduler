@@ -9,7 +9,9 @@ const departmentLabelsByCode: Record<string, string> = {
   CA: "Cashiers",
   GS: "Guest Services",
   FB: "Food and Beverage",
-  SC: "Splash Crew"
+  SC: "Splash Crew",
+  CC: "Cleaning Crew",
+  CR: "Cash Room"
 };
 
 function parseCsv(text: string): string[][] {

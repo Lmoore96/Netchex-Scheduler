@@ -446,6 +446,11 @@ button:focus-visible {
   gap: 18px;
 }
 
+.position-list-editor--embedded {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
 .position-list-editor__header {
   align-items: start;
   border-bottom: 1px solid var(--line);

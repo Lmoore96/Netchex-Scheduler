@@ -7,6 +7,8 @@ const csv = `"Shift ID","Schedule ID","Employee Number","Position ID","Position 
 706421029,706073206,,706082023,"CA Ticketing",,,6/16/2026,10:30 AM,06:00 PM,   7.5,1,"Rivera, Morgan"
 706421030,706073206,,706082024,"FB Grill",,,6/16/2026,10:30 AM,06:00 PM,   7.5,1,"Brown, Jamie"
 706421031,706073206,,706082025,"AQ Shallow Water Lifeguard",,,6/16/2026,09:40 AM,06:30 PM,   8.83,1,"Lee, Casey"
+706421032,706073206,,706082026,"CC Cleaning",,,6/16/2026,08:00 AM,04:00 PM,   8.0,1,"Mills, Avery"
+706421033,706073206,,706082027,"CR Cash Room",,,6/16/2026,08:00 AM,04:00 PM,   8.0,1,"Davis, Quinn"
 706421189,706073206,,706072535,"SC Reception",,,6/17/2026,09:15 AM,06:15 PM,   9.0,2,
 `;
 
@@ -19,7 +21,7 @@ describe("parseWhenToWorkCsv", () => {
       dateRangeStart: "2026-06-16",
       dateRangeEnd: "2026-06-16"
     }));
-    expect(draft.shifts).toHaveLength(5);
+    expect(draft.shifts).toHaveLength(7);
     expect(draft.shifts[0]).toEqual(expect.objectContaining({
       temporaryId: "706420785",
       employeeName: "Smith, Alex",
@@ -45,6 +47,8 @@ describe("parseWhenToWorkCsv", () => {
       departmentLabel: "Aquatics",
       sourceNotes: expect.stringContaining("AQ Shallow Water Lifeguard")
     }));
+    expect(draft.shifts[5]).toEqual(expect.objectContaining({ departmentLabel: "Cleaning Crew" }));
+    expect(draft.shifts[6]).toEqual(expect.objectContaining({ departmentLabel: "Cash Room" }));
     expect(draft.warnings).toContain("Skipped 1 rows without employee names.");
   });
 });

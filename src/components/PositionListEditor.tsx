@@ -12,6 +12,8 @@ interface PositionListEditorProps {
   onCreateList?: (name: string) => void | Promise<void>;
   onDeleteList?: (list: PositionList) => void | Promise<void>;
   onSaveList?: (list: PositionList) => void | Promise<void>;
+  embedded?: boolean;
+  initiallyEditing?: boolean;
 }
 
 type CapacityMode = PositionDefinition["capacityMode"];
@@ -62,7 +64,9 @@ export function PositionListEditor({
   onSelectList,
   onCreateList,
   onDeleteList,
-  onSaveList
+  onSaveList,
+  embedded = false,
+  initiallyEditing = false
 }: PositionListEditorProps) {
   const selectedList = useMemo(
     () => positionLists.find((list) => list.id === selectedListId) ?? positionLists[0],
@@ -72,7 +76,7 @@ export function PositionListEditor({
   const singleCount = sourcePositions.filter((position) => position.capacityMode === "single").length;
   const multipleCount = sourcePositions.filter((position) => position.capacityMode === "multiple").length;
   const [positions, setPositions] = useState<PositionDefinition[]>(() => sortPositions(sourcePositions));
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(initiallyEditing);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [newPositionLabel, setNewPositionLabel] = useState("");
   const [newPositionCapacityMode, setNewPositionCapacityMode] = useState<CapacityMode>("single");
@@ -83,10 +87,10 @@ export function PositionListEditor({
 
   useEffect(() => {
     setPositions(sortPositions(sourcePositions));
-    setIsEditing(false);
+    setIsEditing(initiallyEditing);
     setNewPositionLabel("");
     setNewPositionCapacityMode("single");
-  }, [selectedList?.id, sourcePositions]);
+  }, [initiallyEditing, selectedList?.id, sourcePositions]);
 
   function markDirty() {
     setSaveState("dirty");
@@ -191,7 +195,10 @@ export function PositionListEditor({
   }
 
   return (
-    <section className="panel position-list-editor" aria-labelledby="position-list-heading">
+    <section
+      className={`${embedded ? "" : "panel "}position-list-editor${embedded ? " position-list-editor--embedded" : ""}`}
+      aria-labelledby="position-list-heading"
+    >
       <div className="position-list-editor__header">
         <div>
           <h2 id="position-list-heading">{departmentName} positions</h2>
