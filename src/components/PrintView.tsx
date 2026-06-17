@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Assignment, PositionDefinition, Shift } from "../domain/types";
 
-type PrintMode = "sign-in" | "simple";
+export type PrintMode = "sign-in" | "simple";
 
 interface PrintViewProps {
   departmentName: string;
@@ -9,6 +9,9 @@ interface PrintViewProps {
   positions: PositionDefinition[];
   shifts: Shift[];
   assignments: Assignment[];
+  printMode?: PrintMode;
+  onPrintModeChange?: (printMode: PrintMode) => void;
+  showActions?: boolean;
 }
 
 function formatEmployeeName(employeeName: string) {
@@ -24,8 +27,23 @@ function formatEmployeeName(employeeName: string) {
   return trimmed;
 }
 
-export function PrintView({ departmentName, date, positions, shifts, assignments }: PrintViewProps) {
-  const [printMode, setPrintMode] = useState<PrintMode>("sign-in");
+export function PrintView({
+  departmentName,
+  date,
+  positions,
+  shifts,
+  assignments,
+  printMode: controlledPrintMode,
+  onPrintModeChange,
+  showActions = true
+}: PrintViewProps) {
+  const [internalPrintMode, setInternalPrintMode] = useState<PrintMode>("sign-in");
+  const printMode = controlledPrintMode ?? internalPrintMode;
+
+  function changePrintMode(nextPrintMode: PrintMode) {
+    if (controlledPrintMode === undefined) setInternalPrintMode(nextPrintMode);
+    onPrintModeChange?.(nextPrintMode);
+  }
   const visibleShiftIds = new Set(shifts.map((shift) => shift.id));
   const positionLabels = new Map(positions.map((position) => [position.key, position.label]));
   const assignmentsByShiftId = new Map(
@@ -72,13 +90,13 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
           <h1>{departmentName}</h1>
           <p>{date}</p>
         </div>
-        <div className="print-sheet__actions no-print">
+        {showActions ? <div className="print-sheet__actions no-print">
           <div className="print-sheet__mode-toggle" aria-label="Crew print view">
             <button
               type="button"
               className={printMode === "sign-in" ? "is-active" : undefined}
               aria-pressed={printMode === "sign-in"}
-              onClick={() => setPrintMode("sign-in")}
+              onClick={() => changePrintMode("sign-in")}
             >
               Sign-in sheet
             </button>
@@ -86,7 +104,7 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
               type="button"
               className={printMode === "simple" ? "is-active" : undefined}
               aria-pressed={printMode === "simple"}
-              onClick={() => setPrintMode("simple")}
+              onClick={() => changePrintMode("simple")}
             >
               Simple list
             </button>
@@ -94,7 +112,7 @@ export function PrintView({ departmentName, date, positions, shifts, assignments
           <button type="button" onClick={() => window.print()}>
             Print crew list
           </button>
-        </div>
+        </div> : null}
       </header>
 
       {printMode === "sign-in" ? (

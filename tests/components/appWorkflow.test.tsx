@@ -22,6 +22,9 @@ describe("App workflow", () => {
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Assign" })).toHaveClass("is-active"));
     expect(screen.queryByRole("button", { name: "Positions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Print layout")).toHaveValue("sign-in");
+    expect(screen.getByRole("button", { name: "Print crew list" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Edit positions" }));
 

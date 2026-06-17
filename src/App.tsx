@@ -6,7 +6,7 @@ import { DayDepartmentPicker } from "./components/DayDepartmentPicker";
 import { ImportPanel } from "./components/ImportPanel";
 import { ManualShiftForm } from "./components/ManualShiftForm";
 import { PositionListEditor } from "./components/PositionListEditor";
-import { PrintView } from "./components/PrintView";
+import { PrintView, type PrintMode } from "./components/PrintView";
 import { RotationBuilder } from "./components/RotationBuilder";
 import { Shell } from "./components/Shell";
 import type { Assignment, ManualShiftInput, ParsedScheduleDraft, PositionList, SavedScheduleSummary, Shift } from "./domain/types";
@@ -43,7 +43,7 @@ import {
 import { readDatabaseConnected, writeDatabaseConnected } from "./lib/storageMode";
 import { defaultListForDepartment, departmentIdFromName, starterPositions } from "./domain/defaultPositionLists";
 
-type View = "import" | "assign" | "print" | "rotations";
+type View = "import" | "assign" | "rotations";
 
 function draftToShifts(draft: ParsedScheduleDraft, importId: string): Shift[] {
   return draft.shifts
@@ -132,6 +132,7 @@ export function App() {
   const [isSavingManualShift, setIsSavingManualShift] = useState(false);
   const [databaseConnected, setDatabaseConnected] = useState(readDatabaseConnected);
   const [isPositionEditorOpen, setIsPositionEditorOpen] = useState(false);
+  const [crewPrintMode, setCrewPrintMode] = useState<PrintMode>("sign-in");
 
   useEffect(() => {
     let isMounted = true;
@@ -551,14 +552,6 @@ export function App() {
           >
             Rotations
           </button>
-          <button
-            type="button"
-            className={view === "print" ? "is-active" : undefined}
-            onClick={() => setView("print")}
-            disabled={positionShifts.length === 0}
-          >
-            Print
-          </button>
         </nav>
         <div className="workflow-bar__actions" id="workflow-actions-root" aria-label="Workflow actions" />
       </div>
@@ -611,13 +604,23 @@ export function App() {
         <>
           {positionListError ? <p className="app-alert" role="alert">{positionListError}</p> : null}
           <section className="panel panel--workspace">
-            <div className="section-heading">
+            <div className="section-heading no-print">
               <div>
                 <h2>{currentDepartment} Assignments</h2>
                 <p>{currentDate}</p>
               </div>
               <div className="section-heading__actions no-print">
                 <span>{selectedList?.name ?? "Default list"}</span>
+                <label className="compact-field">
+                  <span>Print layout</span>
+                  <select value={crewPrintMode} onChange={(event) => setCrewPrintMode(event.target.value as PrintMode)}>
+                    <option value="sign-in">Sign-in sheet</option>
+                    <option value="simple">Simple list</option>
+                  </select>
+                </label>
+                <button type="button" onClick={() => window.print()} disabled={visibleShifts.length === 0}>
+                  Print crew list
+                </button>
                 <button type="button" onClick={() => setIsPositionEditorOpen((current) => !current)}>
                   {isPositionEditorOpen ? "Done editing positions" : "Edit positions"}
                 </button>
@@ -630,26 +633,40 @@ export function App() {
               onLoad={loadCurrentAssignments}
             />
             {isPositionEditorOpen ? (
-              <PositionListEditor
-                departmentName={currentDepartment}
-                positionLists={departmentLists}
-                selectedListId={selectedListId}
-                onSelectList={(listId) => setSelectedListIds((current) => ({ ...current, [currentDepartmentId]: listId }))}
-                onCreateList={createPositionList}
-                onDeleteList={deletePositionList}
-                onSaveList={savePositionList}
-                embedded
-                initiallyEditing
-              />
+              <div className="no-print">
+                <PositionListEditor
+                  departmentName={currentDepartment}
+                  positionLists={departmentLists}
+                  selectedListId={selectedListId}
+                  onSelectList={(listId) => setSelectedListIds((current) => ({ ...current, [currentDepartmentId]: listId }))}
+                  onCreateList={createPositionList}
+                  onDeleteList={deletePositionList}
+                  onSaveList={savePositionList}
+                  embedded
+                  initiallyEditing
+                />
+              </div>
             ) : null}
-            <AssignmentBoard
+            <div className="no-print">
+              <AssignmentBoard
+                positions={selectedPositions}
+                shifts={visibleShifts}
+                assignments={assignments}
+                onChange={(nextAssignments) => {
+                  setAssignments(nextAssignments);
+                  setAssignmentSaveState("idle");
+                }}
+              />
+            </div>
+            <PrintView
+              departmentName={currentDepartment}
+              date={currentDate}
               positions={selectedPositions}
               shifts={visibleShifts}
               assignments={assignments}
-              onChange={(nextAssignments) => {
-                setAssignments(nextAssignments);
-                setAssignmentSaveState("idle");
-              }}
+              printMode={crewPrintMode}
+              onPrintModeChange={setCrewPrintMode}
+              showActions={false}
             />
           </section>
         </>
@@ -663,15 +680,6 @@ export function App() {
         />
       ) : null}
 
-      {view === "print" ? (
-        <PrintView
-          departmentName={currentDepartment}
-          date={currentDate}
-          positions={selectedPositions}
-          shifts={visibleShifts}
-          assignments={assignments}
-        />
-      ) : null}
     </Shell>
   );
 }

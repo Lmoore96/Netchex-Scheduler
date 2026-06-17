@@ -1051,6 +1051,12 @@ button:focus-visible {
     padding: 0;
   }
 
+  .panel--workspace {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
   .print-sheet {
     border: 0;
     border-radius: 0;
