@@ -139,6 +139,10 @@ function isGroundCrewShift(shift: Shift) {
   return text.includes("ground crew") || text.includes("ground queue");
 }
 
+function isSupportShift(shift: Shift) {
+  return isSlideAttendantShift(shift) || isGroundCrewShift(shift);
+}
+
 function assignmentKey(rotationId: string, positionId: string) {
   return `${rotationId}:${positionId}`;
 }
@@ -325,9 +329,7 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
 
   useEffect(() => {
     const activeShiftIds = new Set(shifts.map((shift) => shift.id));
-    const supportShiftIds = new Set(
-      shifts.filter((shift) => isSlideAttendantShift(shift) || isGroundCrewShift(shift)).map((shift) => shift.id)
-    );
+    const supportShiftIds = new Set(shifts.filter(isSupportShift).map((shift) => shift.id));
 
     setAssignments((current) =>
       Object.fromEntries(
@@ -436,6 +438,9 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
       ...current,
       [role]: current[role].filter((currentShiftId) => currentShiftId !== shiftId)
     }));
+    setAssignments((current) =>
+      Object.fromEntries(Object.entries(current).filter(([, assignedShiftId]) => assignedShiftId !== shiftId))
+    );
     setRotationSaveState("idle");
   }
 
@@ -637,15 +642,20 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
         </label>
         {assignedShifts.length > 0 ? (
           <ul>
-            {assignedShifts.map((shift) => (
-              <li key={shift.id}>
-                <strong>{formatEmployeeName(shift.employeeName)}</strong>
-                <span>{formatShiftRange(shift.startTime, shift.endTime)}</span>
-                <button type="button" className="no-print" onClick={() => removeSupportAssignment(role, shift.id)}>
-                  Remove
-                </button>
-              </li>
-            ))}
+            {assignedShifts.map((shift) => {
+              const startingPosition = startingPositionsByShiftId.get(shift.id);
+
+              return (
+                <li key={shift.id}>
+                  <strong>{formatEmployeeName(shift.employeeName)}</strong>
+                  {startingPosition ? <span>{startingPosition}</span> : null}
+                  <span>{formatShiftRange(shift.startTime, shift.endTime)}</span>
+                  <button type="button" className="no-print" onClick={() => removeSupportAssignment(role, shift.id)}>
+                    Remove
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p>None assigned.</p>
@@ -858,6 +868,10 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
                           </div>
                         </div>
                       );
+                    }
+
+                    if (assignedShift && isSupportShift(assignedShift)) {
+                      return null;
                     }
 
                     return (

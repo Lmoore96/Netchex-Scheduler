@@ -155,9 +155,14 @@ describe("RotationBuilder persistence", () => {
 
     await user.click(screen.getByRole("button", { name: "Autofill" }));
 
-    expect(screen.getByLabelText("Top of Beacon")).toHaveValue("shift-slide-attendant");
-    expect(screen.getByLabelText("Top of Blaster")).toHaveValue("shift-slide-attendant-two");
+    const rotationGrid = document.querySelector(".rotation-builder__grid");
+    expect(rotationGrid).toBeTruthy();
+    expect(within(rotationGrid as HTMLElement).queryByLabelText("Top of Beacon")).not.toBeInTheDocument();
+    expect(within(rotationGrid as HTMLElement).queryByLabelText("Top of Blaster")).not.toBeInTheDocument();
     expect(within(supportSection as HTMLElement).getByText("CASEY GREEN")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("Top of Beacon")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("RILEY WHITE")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("Top of Blaster")).toBeInTheDocument();
   });
 
   it("routes ground crew to ground positions and lets extra slide attendants cover ground positions", async () => {
@@ -249,11 +254,19 @@ describe("RotationBuilder persistence", () => {
 
     await user.click(screen.getByRole("button", { name: "Autofill" }));
 
-    expect(screen.getByLabelText("Ground Queue Blaster")).toHaveValue("shift-ground-crew");
-    expect(screen.getByLabelText("Ground Queue Beacon")).toHaveValue("shift-ground-queue");
-    expect(screen.getByLabelText("Ground Queue Racer")).toHaveValue("shift-slide-attendant-five");
-    expect(screen.getByLabelText("Top of Beacon")).toHaveValue("shift-slide-attendant");
-    expect(screen.getByLabelText("Top of Racer")).toHaveValue("shift-slide-attendant-four");
+    const rotationGrid = document.querySelector(".rotation-builder__grid");
+    expect(rotationGrid).toBeTruthy();
+    expect(within(rotationGrid as HTMLElement).queryByLabelText("Ground Queue Blaster")).not.toBeInTheDocument();
+    expect(within(rotationGrid as HTMLElement).queryByLabelText("Ground Queue Beacon")).not.toBeInTheDocument();
+    expect(within(rotationGrid as HTMLElement).queryByLabelText("Ground Queue Racer")).not.toBeInTheDocument();
+    expect(within(rotationGrid as HTMLElement).queryByLabelText("Top of Beacon")).not.toBeInTheDocument();
+    expect(within(rotationGrid as HTMLElement).queryByLabelText("Top of Racer")).not.toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("JAMIE STONE")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("Ground Queue Blaster")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("RYAN GALLARDO")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("Ground Queue Beacon")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("PARKER YOUNG")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("Ground Queue Racer")).toBeInTheDocument();
   });
 
   it("lets managers manually assign support staff only to eligible rotation positions", () => {
@@ -287,6 +300,21 @@ describe("RotationBuilder persistence", () => {
     expect(within(groundQueueBlaster).getByRole("option", { name: "JAMIE STONE" })).toBeInTheDocument();
     expect(within(riverSix).queryByRole("option", { name: "CASEY GREEN" })).not.toBeInTheDocument();
     expect(within(riverSix).queryByRole("option", { name: "JAMIE STONE" })).not.toBeInTheDocument();
+  });
+
+  it("moves manually assigned support positions out of the lifeguard rotation grid", async () => {
+    const user = userEvent.setup();
+    renderWithWorkflowActions(<RotationBuilder shifts={shifts} />);
+
+    await user.selectOptions(screen.getByLabelText("Top of Beacon"), "shift-slide-attendant");
+
+    const supportSection = screen.getByRole("heading", { name: "Captains, Slide Attendants & Ground Crew" }).closest("section");
+    const rotationGrid = document.querySelector(".rotation-builder__grid");
+    expect(supportSection).toBeTruthy();
+    expect(rotationGrid).toBeTruthy();
+    expect(within(rotationGrid as HTMLElement).queryByLabelText("Top of Beacon")).not.toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("CASEY GREEN")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("Top of Beacon")).toBeInTheDocument();
   });
 
   it("saves the current rotation plan", async () => {
