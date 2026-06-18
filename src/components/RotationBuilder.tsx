@@ -8,7 +8,7 @@ import "./RotationBuilder.css";
 
 type RotationKind = "special" | "shallow";
 type RotationTone = "orange" | "cyan" | "green";
-type SupportRole = "captains" | "slideAttendants";
+type SupportRole = "captains" | "slideAttendants" | "groundCrew";
 type RotationPrintLayout = "assigned" | "handout" | "break-sheet";
 
 interface RotationPosition {
@@ -97,8 +97,25 @@ const defaultRotations: RotationDefinition[] = [
   }
 ];
 
+const slideAttendantPositionPreferences = [
+  ["top of beacon"],
+  ["top of blaster"],
+  ["top of camille", "top of camile"],
+  ["top of racer"]
+];
+
+const groundCrewPositionPreferences = [
+  ["ground queue blaster"],
+  ["ground queue beacon"],
+  ["ground queue racer"]
+];
+
 function uniqueSorted(values: string[]) {
   return [...new Set(values)].sort();
+}
+
+function uniqueValues(values: string[]) {
+  return [...new Set(values)];
 }
 
 function shiftSearchText(shift: Shift) {
@@ -111,6 +128,15 @@ function isSpecialFacilitiesShift(shift: Shift) {
 
 function isShallowShift(shift: Shift) {
   return shiftSearchText(shift).includes("shallow");
+}
+
+function isSlideAttendantShift(shift: Shift) {
+  return shiftSearchText(shift).includes("slide attendant");
+}
+
+function isGroundCrewShift(shift: Shift) {
+  const text = shiftSearchText(shift);
+  return text.includes("ground crew") || text.includes("ground queue");
 }
 
 function assignmentKey(rotationId: string, positionId: string) {
@@ -138,6 +164,10 @@ function employeeOptionLabel(shift: Shift) {
   return formatEmployeeName(shift.employeeName);
 }
 
+function normalizedPositionLabel(label: string) {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 function handoutTitle(rotation: RotationDefinition) {
   if (rotation.kind === "shallow") return rotation.subtitle ? `Shallow (${rotation.subtitle})` : "Shallow";
   return rotation.subtitle ? `${rotation.title} (${rotation.subtitle})` : rotation.title;
@@ -145,10 +175,25 @@ function handoutTitle(rotation: RotationDefinition) {
 
 function eligibleShifts(rotation: RotationDefinition, shifts: Shift[]) {
   if (rotation.kind === "special") {
-    return shifts.filter(isSpecialFacilitiesShift);
+    return shifts.filter((shift) => isSpecialFacilitiesShift(shift) && !isSlideAttendantShift(shift) && !isGroundCrewShift(shift));
   }
 
-  return shifts.filter((shift) => isSpecialFacilitiesShift(shift) || isShallowShift(shift));
+  return shifts.filter(
+    (shift) => !isSlideAttendantShift(shift) && !isGroundCrewShift(shift) && (isSpecialFacilitiesShift(shift) || isShallowShift(shift))
+  );
+}
+
+function preferredAssignmentKeys(rotations: RotationDefinition[], preferences: string[][]) {
+  return preferences.flatMap((labelOptions) => {
+    const normalizedOptions = new Set(labelOptions.map(normalizedPositionLabel));
+
+    for (const rotation of rotations) {
+      const position = rotation.positions.find((candidate) => normalizedOptions.has(normalizedPositionLabel(candidate.label)));
+      if (position) return [assignmentKey(rotation.id, position.id)];
+    }
+
+    return [];
+  });
 }
 
 function shuffle<T>(items: T[]) {
@@ -234,7 +279,8 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [supportAssignments, setSupportAssignments] = useState<Record<SupportRole, string[]>>({
     captains: [],
-    slideAttendants: []
+    slideAttendants: [],
+    groundCrew: []
   });
   const [rotationTemplates, setRotationTemplates] = useState<RotationDefinition[]>(loadRotationTemplates);
   const [newPositionLabels, setNewPositionLabels] = useState<Record<string, string>>({});
@@ -242,6 +288,14 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
   const [isSupportCollapsed, setIsSupportCollapsed] = useState(false);
   const [rotationSaveState, setRotationSaveState] = useState<PersistenceState>("idle");
   const [printLayout, setPrintLayout] = useState<RotationPrintLayout>("assigned");
+  const slideAttendantAssignmentKeySet = useMemo(
+    () => new Set(preferredAssignmentKeys(rotationTemplates, slideAttendantPositionPreferences)),
+    [rotationTemplates]
+  );
+  const groundCrewAssignmentKeySet = useMemo(
+    () => new Set(preferredAssignmentKeys(rotationTemplates, groundCrewPositionPreferences)),
+    [rotationTemplates]
+  );
 
   useEffect(() => {
     if (!selectedDate && dates[0]) {
@@ -255,30 +309,51 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
     }
   }, [rotationTemplates]);
 
-  useEffect(() => {
-    const activeShiftIds = new Set(shifts.map((shift) => shift.id));
-
-    setAssignments((current) =>
-      Object.fromEntries(Object.entries(current).filter(([, shiftId]) => activeShiftIds.has(shiftId)))
-    );
-    setSupportAssignments((current) => ({
-      captains: current.captains.filter((shiftId) => activeShiftIds.has(shiftId)),
-      slideAttendants: current.slideAttendants.filter((shiftId) => activeShiftIds.has(shiftId))
-    }));
-  }, [shifts]);
-
   const currentDate = selectedDate || dates[0] || "";
   const dateShifts = useMemo(
     () => shifts.filter((shift) => shift.shiftDate === currentDate),
     [currentDate, shifts]
   );
+  const automaticSlideAttendantIds = useMemo(
+    () => dateShifts.filter(isSlideAttendantShift).map((shift) => shift.id),
+    [dateShifts]
+  );
+  const automaticGroundCrewIds = useMemo(
+    () => dateShifts.filter(isGroundCrewShift).map((shift) => shift.id),
+    [dateShifts]
+  );
+
+  useEffect(() => {
+    const activeShiftIds = new Set(shifts.map((shift) => shift.id));
+    const supportShiftIds = new Set(
+      shifts.filter((shift) => isSlideAttendantShift(shift) || isGroundCrewShift(shift)).map((shift) => shift.id)
+    );
+
+    setAssignments((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([, shiftId]) => activeShiftIds.has(shiftId) && !supportShiftIds.has(shiftId))
+      )
+    );
+    setSupportAssignments((current) => ({
+      captains: current.captains.filter((shiftId) => activeShiftIds.has(shiftId)),
+      slideAttendants: uniqueValues([
+        ...current.slideAttendants.filter((shiftId) => activeShiftIds.has(shiftId)),
+        ...automaticSlideAttendantIds
+      ]),
+      groundCrew: uniqueValues([
+        ...current.groundCrew.filter((shiftId) => activeShiftIds.has(shiftId)),
+        ...automaticGroundCrewIds
+      ])
+    }));
+  }, [automaticGroundCrewIds, automaticSlideAttendantIds, shifts]);
+
   const currentScheduleImportId = dateShifts[0]?.scheduleImportId ?? "";
   const assignedShiftIds = useMemo(
     () => new Set(Object.values(assignments).filter(Boolean)),
     [assignments]
   );
   const supportShiftIds = useMemo(
-    () => new Set([...supportAssignments.captains, ...supportAssignments.slideAttendants]),
+    () => new Set([...supportAssignments.captains, ...supportAssignments.slideAttendants, ...supportAssignments.groundCrew]),
     [supportAssignments]
   );
   const unassignedShifts = dateShifts.filter(
@@ -293,11 +368,17 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
   const slideAttendantShifts = supportAssignments.slideAttendants
     .map((shiftId) => dateShifts.find((shift) => shift.id === shiftId))
     .filter((shift): shift is Shift => Boolean(shift));
+  const groundCrewShifts = supportAssignments.groundCrew
+    .map((shiftId) => dateShifts.find((shift) => shift.id === shiftId))
+    .filter((shift): shift is Shift => Boolean(shift));
   const captainOptions = dateShifts.filter(
     (shift) => isSpecialFacilitiesShift(shift) && !supportShiftIds.has(shift.id) && !assignedShiftIds.has(shift.id)
   );
   const slideAttendantOptions = dateShifts.filter(
-    (shift) => isShallowShift(shift) && !supportShiftIds.has(shift.id) && !assignedShiftIds.has(shift.id)
+    (shift) => (isShallowShift(shift) || isSlideAttendantShift(shift)) && !supportShiftIds.has(shift.id) && !assignedShiftIds.has(shift.id)
+  );
+  const groundCrewOptions = dateShifts.filter(
+    (shift) => isGroundCrewShift(shift) && !supportShiftIds.has(shift.id) && !assignedShiftIds.has(shift.id)
   );
   const startingPositionsByShiftId = useMemo(() => {
     const next = new Map<string, string>();
@@ -328,7 +409,7 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
   function selectDate(date: string) {
     setSelectedDate(date);
     setAssignments({});
-    setSupportAssignments({ captains: [], slideAttendants: [] });
+    setSupportAssignments({ captains: [], slideAttendants: [], groundCrew: [] });
     setRotationSaveState("idle");
   }
 
@@ -363,16 +444,50 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
       dateShifts.filter((shift) => !supportShiftIds.has(shift.id)).map((shift) => shift.id)
     );
     const nextAssignments: Record<string, string> = {};
+    const slideAssignmentKeys = preferredAssignmentKeys(rotationTemplates, slideAttendantPositionPreferences);
+    const groundAssignmentKeys = preferredAssignmentKeys(rotationTemplates, groundCrewPositionPreferences);
+    const dateShiftIds = new Set(dateShifts.map((shift) => shift.id));
+    const usedSupportShiftIds = new Set<string>();
+    const remainingGroundAssignmentKeys = [...groundAssignmentKeys];
+
+    function assignSupportShift(shiftId: string, assignmentKey: string | undefined) {
+      if (!assignmentKey || !dateShiftIds.has(shiftId)) return false;
+
+      nextAssignments[assignmentKey] = shiftId;
+      usedSupportShiftIds.add(shiftId);
+      return true;
+    }
+
+    supportAssignments.slideAttendants.slice(0, slideAssignmentKeys.length).forEach((shiftId, index) => {
+      assignSupportShift(shiftId, slideAssignmentKeys[index]);
+    });
+
+    supportAssignments.groundCrew.forEach((shiftId) => {
+      if (assignSupportShift(shiftId, remainingGroundAssignmentKeys[0])) {
+        remainingGroundAssignmentKeys.shift();
+      }
+    });
+
+    supportAssignments.slideAttendants
+      .filter((shiftId) => !usedSupportShiftIds.has(shiftId))
+      .forEach((shiftId) => {
+        if (assignSupportShift(shiftId, remainingGroundAssignmentKeys[0])) {
+          remainingGroundAssignmentKeys.shift();
+        }
+      });
 
     rotationTemplates.forEach((rotation) => {
       rotation.positions.forEach((position) => {
+        const key = assignmentKey(rotation.id, position.id);
+        if (nextAssignments[key]) return;
+
         const candidates = shuffle(
           eligibleShifts(rotation, dateShifts).filter((shift) => availableShiftIds.has(shift.id))
         );
         const selectedShift = candidates[0];
 
         if (selectedShift) {
-          nextAssignments[assignmentKey(rotation.id, position.id)] = selectedShift.id;
+          nextAssignments[key] = selectedShift.id;
           availableShiftIds.delete(selectedShift.id);
         }
       });
@@ -499,7 +614,7 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
 
       setRotationTemplates(restoreRotationTemplates(plan.rotationTemplates));
       setAssignments(plan.assignments);
-      setSupportAssignments(plan.supportAssignments);
+      setSupportAssignments({ ...plan.supportAssignments, groundCrew: plan.supportAssignments.groundCrew ?? [] });
       setRotationSaveState("loaded");
     } catch {
       setRotationSaveState("error");
@@ -702,10 +817,21 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
                     const key = assignmentKey(rotation.id, position.id);
                     const currentShiftId = assignments[key] || "";
                     const assignedShift = dateShifts.find((shift) => shift.id === currentShiftId);
-                    const options = eligibleShifts(rotation, dateShifts).filter(
+                    const eligibleOptions = eligibleShifts(rotation, dateShifts).filter(
                       (shift) =>
                         (!assignedShiftIds.has(shift.id) && !supportShiftIds.has(shift.id)) || shift.id === currentShiftId
                     );
+                    const eligibleSupportOptions = dateShifts.filter((shift) => {
+                      const isEligibleSupportShift =
+                        (slideAttendantAssignmentKeySet.has(key) && isSlideAttendantShift(shift)) ||
+                        (groundCrewAssignmentKeySet.has(key) && (isSlideAttendantShift(shift) || isGroundCrewShift(shift)));
+
+                      return isEligibleSupportShift && (!assignedShiftIds.has(shift.id) || shift.id === currentShiftId);
+                    });
+                    const options =
+                      assignedShift && !eligibleOptions.some((shift) => shift.id === assignedShift.id) && !eligibleSupportOptions.some((shift) => shift.id === assignedShift.id)
+                        ? [assignedShift, ...eligibleOptions, ...eligibleSupportOptions]
+                        : [...eligibleOptions, ...eligibleSupportOptions];
 
                     if (isEditingTemplate) {
                       return (
@@ -771,7 +897,7 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
           <section className={`rotation-support ${isSupportCollapsed ? "is-collapsed" : ""}`}>
             <header className="rotation-support__header">
               <div>
-                <h3>Captains & Slide Attendants</h3>
+                <h3>Captains, Slide Attendants & Ground Crew</h3>
                 <p>People assigned here are skipped by Autofill.</p>
               </div>
               <button type="button" className="no-print" onClick={() => setIsSupportCollapsed((current) => !current)}>
@@ -781,6 +907,7 @@ export function RotationBuilder({ shifts, onSavePlan = saveRotationPlan, onLoadP
             <div className="rotation-support__body">
               {renderSupportGroup("Captains / Supervisors", "captains", captainShifts, captainOptions)}
               {renderSupportGroup("Slide Attendants", "slideAttendants", slideAttendantShifts, slideAttendantOptions)}
+              {renderSupportGroup("Ground Crew", "groundCrew", groundCrewShifts, groundCrewOptions)}
             </div>
           </section>
 

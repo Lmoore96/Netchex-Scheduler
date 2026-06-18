@@ -151,6 +151,7 @@ export interface RotationPlanTemplate {
 export interface RotationPlanSupportAssignments {
   captains: string[];
   slideAttendants: string[];
+  groundCrew: string[];
 }
 
 export interface RotationPlanRequest {

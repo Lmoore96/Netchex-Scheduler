@@ -175,7 +175,8 @@ const rotationPlanSchema = z.object({
   assignments: z.record(z.string()),
   supportAssignments: z.object({
     captains: z.array(z.string()),
-    slideAttendants: z.array(z.string())
+    slideAttendants: z.array(z.string()),
+    groundCrew: z.array(z.string()).default([])
   }),
   savedAt: z.string().min(1)
 });

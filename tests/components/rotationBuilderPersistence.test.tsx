@@ -47,6 +47,18 @@ const shifts: Shift[] = [
     endTime: "17:00",
     departmentLabel: "Special Facilities Lifeguard",
     sourceConfidence: "medium"
+  },
+  {
+    id: "shift-slide-attendant",
+    scheduleImportId: "import-1",
+    employeeId: "employee-4",
+    employeeName: "GREEN, CASEY",
+    shiftDate: "2026-05-22",
+    startTime: "09:00",
+    endTime: "17:00",
+    departmentLabel: "Aquatics",
+    sourceNotes: "AQ Slide Attendant",
+    sourceConfidence: "medium"
   }
 ];
 
@@ -62,7 +74,7 @@ describe("RotationBuilder persistence", () => {
             planDate: "2026-05-22",
             rotationTemplates: [],
             assignments: {},
-            supportAssignments: { captains: [], slideAttendants: [] },
+            supportAssignments: { captains: [], slideAttendants: [], groundCrew: [] },
             savedAt: "2026-05-22T12:00:00Z"
           }
         }), { status: 200 });
@@ -108,9 +120,173 @@ describe("RotationBuilder persistence", () => {
     const rows = within(screen.getByRole("table", { name: "Lifeguard break sheet" })).getAllByRole("row");
     expect(rows).toHaveLength(shifts.length + 1 + 8);
     expect(rows[1]).toHaveTextContent("ALEX SMITH");
-    expect(rows[2]).toHaveTextContent("MORGAN BROWN");
-    expect(rows[3]).toHaveTextContent("TAYLOR JONES");
+    expect(rows[2]).toHaveTextContent("CASEY GREEN");
+    expect(rows[3]).toHaveTextContent("MORGAN BROWN");
+    expect(rows[4]).toHaveTextContent("TAYLOR JONES");
     expect(rows[1]).toHaveTextContent("Top of Blaster");
+  });
+
+  it("autofills scheduled slide attendants into preferred top-of-slide positions", async () => {
+    const user = userEvent.setup();
+    renderWithWorkflowActions(
+      <RotationBuilder
+        shifts={[
+          ...shifts,
+          {
+            id: "shift-slide-attendant-two",
+            scheduleImportId: "import-1",
+            employeeId: "employee-5",
+            employeeName: "WHITE, RILEY",
+            shiftDate: "2026-05-22",
+            startTime: "09:00",
+            endTime: "17:00",
+            departmentLabel: "Aquatics",
+            sourceNotes: "AQ Slide Attendant",
+            sourceConfidence: "medium"
+          }
+        ]}
+      />
+    );
+
+    const supportSection = screen.getByRole("heading", { name: "Captains, Slide Attendants & Ground Crew" }).closest("section");
+    expect(supportSection).toBeTruthy();
+    expect(within(supportSection as HTMLElement).getByText("CASEY GREEN")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("RILEY WHITE")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Autofill" }));
+
+    expect(screen.getByLabelText("Top of Beacon")).toHaveValue("shift-slide-attendant");
+    expect(screen.getByLabelText("Top of Blaster")).toHaveValue("shift-slide-attendant-two");
+    expect(within(supportSection as HTMLElement).getByText("CASEY GREEN")).toBeInTheDocument();
+  });
+
+  it("routes ground crew to ground positions and lets extra slide attendants cover ground positions", async () => {
+    const user = userEvent.setup();
+    renderWithWorkflowActions(
+      <RotationBuilder
+        shifts={[
+          ...shifts,
+          {
+            id: "shift-slide-attendant-two",
+            scheduleImportId: "import-1",
+            employeeId: "employee-5",
+            employeeName: "WHITE, RILEY",
+            shiftDate: "2026-05-22",
+            startTime: "09:00",
+            endTime: "17:00",
+            departmentLabel: "Aquatics",
+            sourceNotes: "AQ Slide Attendant",
+            sourceConfidence: "medium"
+          },
+          {
+            id: "shift-slide-attendant-three",
+            scheduleImportId: "import-1",
+            employeeId: "employee-6",
+            employeeName: "BLACK, JORDAN",
+            shiftDate: "2026-05-22",
+            startTime: "09:00",
+            endTime: "17:00",
+            departmentLabel: "Aquatics",
+            sourceNotes: "AQ Slide Attendant",
+            sourceConfidence: "medium"
+          },
+          {
+            id: "shift-slide-attendant-four",
+            scheduleImportId: "import-1",
+            employeeId: "employee-7",
+            employeeName: "GRAY, AVERY",
+            shiftDate: "2026-05-22",
+            startTime: "09:00",
+            endTime: "17:00",
+            departmentLabel: "Aquatics",
+            sourceNotes: "AQ Slide Attendant",
+            sourceConfidence: "medium"
+          },
+          {
+            id: "shift-slide-attendant-five",
+            scheduleImportId: "import-1",
+            employeeId: "employee-8",
+            employeeName: "YOUNG, PARKER",
+            shiftDate: "2026-05-22",
+            startTime: "09:00",
+            endTime: "17:00",
+            departmentLabel: "Aquatics",
+            sourceNotes: "AQ Slide Attendant",
+            sourceConfidence: "medium"
+          },
+          {
+            id: "shift-ground-crew",
+            scheduleImportId: "import-1",
+            employeeId: "employee-9",
+            employeeName: "STONE, JAMIE",
+            shiftDate: "2026-05-22",
+            startTime: "09:00",
+            endTime: "17:00",
+            departmentLabel: "Aquatics",
+            sourceNotes: "AQ Ground Crew",
+            sourceConfidence: "medium"
+          },
+          {
+            id: "shift-ground-queue",
+            scheduleImportId: "import-1",
+            employeeId: "employee-10",
+            employeeName: "GALLARDO, RYAN",
+            shiftDate: "2026-05-22",
+            startTime: "09:00",
+            endTime: "17:00",
+            departmentLabel: "Aquatics",
+            sourceNotes: "AQ Ground Queue",
+            sourceConfidence: "medium"
+          }
+        ]}
+      />
+    );
+
+    const supportSection = screen.getByRole("heading", { name: "Captains, Slide Attendants & Ground Crew" }).closest("section");
+    expect(supportSection).toBeTruthy();
+    expect(within(supportSection as HTMLElement).getByText("JAMIE STONE")).toBeInTheDocument();
+    expect(within(supportSection as HTMLElement).getByText("RYAN GALLARDO")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Autofill" }));
+
+    expect(screen.getByLabelText("Ground Queue Blaster")).toHaveValue("shift-ground-crew");
+    expect(screen.getByLabelText("Ground Queue Beacon")).toHaveValue("shift-ground-queue");
+    expect(screen.getByLabelText("Ground Queue Racer")).toHaveValue("shift-slide-attendant-five");
+    expect(screen.getByLabelText("Top of Beacon")).toHaveValue("shift-slide-attendant");
+    expect(screen.getByLabelText("Top of Racer")).toHaveValue("shift-slide-attendant-four");
+  });
+
+  it("lets managers manually assign support staff only to eligible rotation positions", () => {
+    renderWithWorkflowActions(
+      <RotationBuilder
+        shifts={[
+          ...shifts,
+          {
+            id: "shift-ground-crew",
+            scheduleImportId: "import-1",
+            employeeId: "employee-9",
+            employeeName: "STONE, JAMIE",
+            shiftDate: "2026-05-22",
+            startTime: "09:00",
+            endTime: "17:00",
+            departmentLabel: "Aquatics",
+            sourceNotes: "AQ Ground Crew",
+            sourceConfidence: "medium"
+          }
+        ]}
+      />
+    );
+
+    const topOfBeacon = screen.getByLabelText("Top of Beacon");
+    const groundQueueBlaster = screen.getByLabelText("Ground Queue Blaster");
+    const riverSix = screen.getByLabelText("River 6");
+
+    expect(within(topOfBeacon).getByRole("option", { name: "CASEY GREEN" })).toBeInTheDocument();
+    expect(within(topOfBeacon).queryByRole("option", { name: "JAMIE STONE" })).not.toBeInTheDocument();
+    expect(within(groundQueueBlaster).getByRole("option", { name: "CASEY GREEN" })).toBeInTheDocument();
+    expect(within(groundQueueBlaster).getByRole("option", { name: "JAMIE STONE" })).toBeInTheDocument();
+    expect(within(riverSix).queryByRole("option", { name: "CASEY GREEN" })).not.toBeInTheDocument();
+    expect(within(riverSix).queryByRole("option", { name: "JAMIE STONE" })).not.toBeInTheDocument();
   });
 
   it("saves the current rotation plan", async () => {

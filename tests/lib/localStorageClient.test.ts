@@ -98,7 +98,7 @@ describe("localStorageClient", () => {
       planDate: "2026-06-12",
       rotationTemplates: [],
       assignments: {},
-      supportAssignments: { captains: [], slideAttendants: [] }
+      supportAssignments: { captains: [], slideAttendants: [], groundCrew: [] }
     };
     const rotationQuery = { scheduleImportId: schedule.importId, planDate: "2026-06-12" };
 

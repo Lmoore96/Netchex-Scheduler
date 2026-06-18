@@ -68,7 +68,13 @@ function uniqueSorted(values: string[]) {
 
 function isLifeguardRotationText(value: string) {
   const normalized = value.toLowerCase();
-  return normalized.includes("shallow") || normalized.includes("special facilit");
+  return (
+    normalized.includes("shallow") ||
+    normalized.includes("special facilit") ||
+    normalized.includes("slide attendant") ||
+    normalized.includes("ground crew") ||
+    normalized.includes("ground queue")
+  );
 }
 
 function isLifeguardRotationShift(shift: Pick<Shift, "departmentLabel" | "sourceNotes">) {
