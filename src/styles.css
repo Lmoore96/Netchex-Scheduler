@@ -1165,10 +1165,23 @@ button:focus-visible {
 }
 
 @media print {
+  @page {
+    size: letter portrait;
+    margin: 0.25in;
+  }
+
   :root,
   html,
   body {
     background: #ffffff;
+  }
+
+  html,
+  body,
+  #root,
+  .shell {
+    height: auto;
+    min-height: 0;
   }
 
   .no-print {
