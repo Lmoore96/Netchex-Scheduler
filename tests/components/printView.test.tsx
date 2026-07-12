@@ -54,6 +54,7 @@ describe("PrintView", () => {
     expect(screen.getByText("2026-05-22")).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Splash Crew sign-in sheet" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Scheduled arrival" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Position" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Time in" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Lunch out" })).toBeInTheDocument();
@@ -65,6 +66,7 @@ describe("PrintView", () => {
 
     const assignedRow = screen.getByText("MAI AL-RAJAI").closest("tr");
     expect(assignedRow).toHaveTextContent("Tower 1");
+    expect(assignedRow).toHaveTextContent("10:00 AM");
     expect(screen.getByText("ERIN ASH")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Unassigned" })).not.toBeInTheDocument();
   });

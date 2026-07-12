@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Assignment, PositionDefinition, Shift } from "../domain/types";
+import { formatDisplayTime } from "../lib/time";
 
 export type PrintMode = "sign-in" | "simple";
 
@@ -60,6 +61,7 @@ export function PrintView({
     return {
       employeeName: formatEmployeeName(shift.employeeName),
       id: shift.id,
+      scheduledArrival: formatDisplayTime(shift.startTime),
       positionLabel
     };
   });
@@ -120,6 +122,7 @@ export function PrintView({
           <thead>
             <tr>
               <th scope="col">Name</th>
+              <th scope="col">Scheduled arrival</th>
               <th scope="col">Position</th>
               <th scope="col">Time in</th>
               <th scope="col">Lunch out</th>
@@ -132,6 +135,7 @@ export function PrintView({
               rows.map((row) => (
                 <tr key={row.id}>
                   <td>{row.employeeName}</td>
+                  <td>{row.scheduledArrival}</td>
                   <td>{row.positionLabel}</td>
                   <td aria-label={row.employeeName + " time in"} />
                   <td aria-label={row.employeeName + " lunch out"} />
@@ -141,11 +145,12 @@ export function PrintView({
               ))
             ) : (
               <tr>
-                <td colSpan={6}>No scheduled employees</td>
+                <td colSpan={7}>No scheduled employees</td>
               </tr>
             )}
             {signInBlankRows.map((rowIndex) => (
               <tr key={`blank-${rowIndex}`} aria-label={`Blank sign-in row ${rowIndex + 1}`}>
+                <td />
                 <td />
                 <td />
                 <td />

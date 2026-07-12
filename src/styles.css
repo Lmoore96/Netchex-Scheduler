@@ -938,17 +938,22 @@ button:focus-visible {
 
 .print-sign-table th:nth-child(1),
 .print-sign-table td:nth-child(1) {
-  width: 24%;
+  width: 22%;
 }
 
 .print-sign-table th:nth-child(2),
 .print-sign-table td:nth-child(2) {
-  width: 24%;
+  width: 13%;
 }
 
-.print-sign-table th:nth-child(n + 3),
-.print-sign-table td:nth-child(n + 3) {
-  width: 13%;
+.print-sign-table th:nth-child(3),
+.print-sign-table td:nth-child(3) {
+  width: 21%;
+}
+
+.print-sign-table th:nth-child(n + 4),
+.print-sign-table td:nth-child(n + 4) {
+  width: 11%;
 }
 
 .print-simple-list {
